@@ -47,6 +47,10 @@ RADPERSEC = "rad/sec"
 ELECTRON_VOLT = "eV"
 KELVIN = "K"
 
+DENSITY = "kg/m^3"
+THERMAL_CONDUCTIVITY = "W/(m*K)"
+SPECIFIC_HEAT_CAPACITY = "J/(kg*K)"
+
 # large number used for comparing infinity
 LARGE_NUMBER = 1e10
 

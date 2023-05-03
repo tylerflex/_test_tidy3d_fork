@@ -99,6 +99,11 @@ from .version import __version__
 # updater
 from .updater import Updater
 
+# heat
+from .components.heat import TemperatureDependenceConstant
+from .components.heat import TemperatureDependenceLinear, TemperatureDependenceTable
+from .components.heat import HeatSpecLiquid, HeatSpecSolid
+
 
 def set_logging_level(level: str) -> None:
     """Raise a warning here instead of setting the logging level."""
