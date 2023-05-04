@@ -1,8 +1,7 @@
-"""Tests mode objects."""
+"""Tests heat medium objects."""
 import pytest
 import pydantic
 import tidy3d as td
-from tidy3d.exceptions import SetupError
 import matplotlib.pylab as plt
 
 

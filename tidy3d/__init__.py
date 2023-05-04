@@ -100,9 +100,10 @@ from .version import __version__
 from .updater import Updater
 
 # heat
-from .components.heat import TemperatureDependenceConstant
-from .components.heat import TemperatureDependenceLinear, TemperatureDependenceTable
-from .components.heat import HeatSpecLiquid, HeatSpecSolid
+from .components.heat.heat_medium import TemperatureDependenceConstant, TemperatureDependenceLinear
+from .components.heat.heat_medium import TemperatureDependenceTable, HeatSpecLiquid, HeatSpecSolid
+from .components.heat.heat_simulation import HeatSimulation
+from .components.heat.heat_data import HeatSimulationData
 
 
 def set_logging_level(level: str) -> None:
