@@ -104,7 +104,13 @@ from .components.heat.heat_medium import TemperatureDependenceConstant, Temperat
 from .components.heat.heat_medium import TemperatureDependenceTable, HeatSpecLiquid, HeatSpecSolid
 from .components.heat.heat_simulation import HeatSimulation
 from .components.heat.heat_data import HeatSimulationData
-
+from .components.heat.heat_boundary import HeatBoundaryTemperature, HeatBoundaryConvection
+from .components.heat.heat_boundary import HeatBoundaryFlux, HeatBoundaryPlacementStructure
+from .components.heat.heat_boundary import HeatBoundaryPlacementStructureStructure
+from .components.heat.heat_boundary import HeatBoundaryPlacementMediumMedium
+from .components.heat.heat_boundary import HeatBoundaryPlacementStructureSimulation
+from .components.heat.heat_boundary import HeatBoundaryPlacementSimulation
+from .components.heat.heat_source import HeatUniformSource, HeatCustomSource
 
 def set_logging_level(level: str) -> None:
     """Raise a warning here instead of setting the logging level."""

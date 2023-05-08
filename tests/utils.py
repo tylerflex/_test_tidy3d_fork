@@ -69,27 +69,33 @@ SIM_FULL = Simulation(
     structures=[
         Structure(
             geometry=Box(size=(1, 1, 1), center=(-1, 0, 0)),
-            medium=Medium(permittivity=2.0),
+            medium=Medium(permittivity=2.0, name="dieletric"),
+            name="dieletric_box",
         ),
         Structure(
             geometry=Box(size=(1, inf, 1), center=(-1, 0, 0)),
-            medium=Medium(permittivity=1.0, conductivity=3.0),
+            medium=Medium(permittivity=1.0, conductivity=3.0, name="lossy_dieletric"),
+            name="lossy_box",
         ),
         Structure(
             geometry=Sphere(radius=1.0, center=(1.0, 0.0, 1.0)),
-            medium=Sellmeier(coeffs=[(1.03961212, 0.00600069867), (0.231792344, 0.0200179144)]),
+            medium=Sellmeier(coeffs=[(1.03961212, 0.00600069867), (0.231792344, 0.0200179144)], name="sellmeier"),
+            name="sellmeier_sphere",
         ),
         Structure(
             geometry=Box(size=(1, 1, 1), center=(-1, 0, 0)),
-            medium=Lorentz(eps_inf=2.0, coeffs=[(1, 2, 3)]),
+            medium=Lorentz(eps_inf=2.0, coeffs=[(1, 2, 3)], name="lorentz"),
+            name="lorentz_box",
         ),
         Structure(
             geometry=Box(size=(1, 1, 1), center=(-1, 0, 0)),
-            medium=Debye(eps_inf=2.0, coeffs=[(1, 3)]),
+            medium=Debye(eps_inf=2.0, coeffs=[(1, 3)], name="debye"),
+            name="debye_box",
         ),
         Structure(
             geometry=Box(size=(1, 1, 1), center=(-1, 0, 0)),
-            medium=Drude(eps_inf=2.0, coeffs=[(1, 3)]),
+            medium=Drude(eps_inf=2.0, coeffs=[(1, 3)], name="drude"),
+            name="drude_box",
         ),
         Structure(
             geometry=Box(size=(1, 0, 1), center=(-1, 0, 0)),
@@ -98,6 +104,7 @@ SIM_FULL = Simulation(
         Structure(
             geometry=GeometryGroup(geometries=[Box(size=(1, 1, 1), center=(-1, 0, 0))]),
             medium=PEC,
+            name="pec_group",
         ),
         Structure(
             geometry=Cylinder(radius=1.0, length=2.0, center=(1.0, 0.0, -1.0), axis=1),
@@ -106,12 +113,14 @@ SIM_FULL = Simulation(
                 yy=td.Medium(permittivity=2),
                 zz=td.Medium(permittivity=3),
             ),
+            name="anisotopic_cylinder",
         ),
         Structure(
             geometry=PolySlab(
                 vertices=[(-1.5, -1.5), (-0.5, -1.5), (-0.5, -0.5)], slab_bounds=[-1, 1]
             ),
             medium=PoleResidue(eps_inf=1.0, poles=((6206417594288582j, (-3.311074436985222e16j)),)),
+            name="pole_slab",
         ),
         Structure(
             geometry=TriangleMesh.from_triangles(
@@ -133,6 +142,7 @@ SIM_FULL = Simulation(
                 )
             ),
             medium=td.Medium(permittivity=5),
+            name="dieletric_mesh",
         ),
     ],
     sources=[
