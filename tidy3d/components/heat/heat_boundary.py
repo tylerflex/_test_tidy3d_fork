@@ -79,7 +79,7 @@ class HeatBoundaryPlacementStructure(HeatBoundaryPlacement):
 class HeatBoundaryPlacementStructureStructure(HeatBoundaryPlacement):
     """Placement of thermal boundary conditions between two structures."""
 
-    structures: Tuple[str, str] = pd.Field(
+    structures: Tuple[str, Union[str, None]] = pd.Field(
         title="Structures",
         description="Names of two structures.",
     )
