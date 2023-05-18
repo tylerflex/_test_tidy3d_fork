@@ -101,15 +101,15 @@ from .updater import Updater
 
 # heat
 from .components.heat.heat_medium import TemperatureDependenceConstant, TemperatureDependenceLinear
-from .components.heat.heat_medium import TemperatureDependenceTable, HeatSpecLiquid, HeatSpecSolid
+from .components.heat.heat_medium import TemperatureDependenceTable, HeatSpecFluid, HeatSpecSolid
 from .components.heat.heat_simulation import HeatSimulation
 from .components.heat.heat_data import HeatSimulationData
-from .components.heat.heat_boundary import HeatBoundaryTemperature, HeatBoundaryConvection
-from .components.heat.heat_boundary import HeatBoundaryFlux, HeatBoundaryPlacementStructure
-from .components.heat.heat_boundary import HeatBoundaryPlacementStructureStructure
-from .components.heat.heat_boundary import HeatBoundaryPlacementMediumMedium
-from .components.heat.heat_boundary import HeatBoundaryPlacementStructureSimulation
-from .components.heat.heat_boundary import HeatBoundaryPlacementSimulation
+from .components.heat.heat_boundary import HeatBCTemperature, HeatBCConvection
+from .components.heat.heat_boundary import HeatBCFlux, HeatBCPlacementStructure
+from .components.heat.heat_boundary import HeatBCPlacementStructureStructure
+from .components.heat.heat_boundary import HeatBCPlacementMediumMedium
+from .components.heat.heat_boundary import HeatBCPlacementStructureSimulation
+from .components.heat.heat_boundary import HeatBCPlacementSimulation
 from .components.heat.heat_source import HeatUniformSource, HeatCustomSource
 
 def set_logging_level(level: str) -> None:

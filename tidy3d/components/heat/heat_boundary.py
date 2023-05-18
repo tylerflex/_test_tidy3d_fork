@@ -15,11 +15,11 @@ from ...exceptions import SetupError
 from ...constants import KELVIN, HEAT_FLUX, HEAT_TRANSFER_COEFF
 
 
-class HeatBoundary(ABC, Tidy3dBaseModel):
+class HeatBC(ABC, Tidy3dBaseModel):
     """Abstract thermal boundary conditions."""
 
 
-class HeatBoundaryTemperature(HeatBoundary):
+class HeatBCTemperature(HeatBC):
     """Constant temperature thermal boundary conditions."""
 
     temperature: pd.PositiveFloat = pd.Field(
@@ -29,7 +29,7 @@ class HeatBoundaryTemperature(HeatBoundary):
     )
 
 
-class HeatBoundaryFlux(HeatBoundary):
+class HeatBCFlux(HeatBC):
     """Constant flux thermal boundary conditions."""
 
     heat_flux: float = pd.Field(
@@ -39,7 +39,7 @@ class HeatBoundaryFlux(HeatBoundary):
     )
 
 
-class HeatBoundaryConvection(HeatBoundary):
+class HeatBCConvection(HeatBC):
     """Convective thermal boundary conditions."""
 
     ambient_temperature: pd.PositiveFloat = pd.Field(
@@ -55,19 +55,19 @@ class HeatBoundaryConvection(HeatBoundary):
     )
 
 
-HeatBoundaryType = Union[HeatBoundaryTemperature, HeatBoundaryFlux, HeatBoundaryConvection]
+HeatBCType = Union[HeatBCTemperature, HeatBCFlux, HeatBCConvection]
 
 
-class HeatBoundaryPlacement(ABC, Tidy3dBaseModel):
+class HeatBCPlacement(ABC, Tidy3dBaseModel):
     """Abstract location for thermal boundary conditions."""
 
-    bc: HeatBoundaryType = pd.Field(
+    bc: HeatBCType = pd.Field(
         title="Boundary Conditions",
         description="Boundary conditions applied at the selected location.",
     )
 
 
-class HeatBoundaryPlacementStructure(HeatBoundaryPlacement):
+class HeatBCPlacementStructure(HeatBCPlacement):
     """Placement of thermal boundary conditions on the structure's boundary."""
 
     structure: str = pd.Field(
@@ -76,10 +76,10 @@ class HeatBoundaryPlacementStructure(HeatBoundaryPlacement):
     )
 
 
-class HeatBoundaryPlacementStructureStructure(HeatBoundaryPlacement):
+class HeatBCPlacementStructureStructure(HeatBCPlacement):
     """Placement of thermal boundary conditions between two structures."""
 
-    structures: Tuple[str, Union[str, None]] = pd.Field(
+    structures: Tuple[str, str] = pd.Field(
         title="Structures",
         description="Names of two structures.",
     )
@@ -90,12 +90,12 @@ class HeatBoundaryPlacementStructureStructure(HeatBoundaryPlacement):
         if val[0] == val[1]:
             raise SetupError(
                 "The same structure is provided twice in "
-                ":class:`HeatBoundaryPlacementStructureStructure`."
+                ":class:`HeatBCPlacementStructureStructure`."
             )
         return val
 
 
-class HeatBoundaryPlacementMediumMedium(HeatBoundaryPlacement):
+class HeatBCPlacementMediumMedium(HeatBCPlacement):
     """Placement of thermal boundary conditions between two mediums."""
 
     mediums: Tuple[str, str] = pd.Field(
@@ -109,16 +109,16 @@ class HeatBoundaryPlacementMediumMedium(HeatBoundaryPlacement):
         if val[0] == val[1]:
             raise SetupError(
                 "The same medium is provided twice in "
-                ":class:`HeatBoundaryPlacementMediumMedium`."
+                ":class:`HeatBCPlacementMediumMedium`."
             )
         return val
 
 
-class HeatBoundaryPlacementSimulation(HeatBoundaryPlacement):
+class HeatBCPlacementSimulation(HeatBCPlacement):
     """Placement of thermal boundary conditions on the simulation box boundary."""
 
 
-class HeatBoundaryPlacementStructureSimulation(HeatBoundaryPlacement):
+class HeatBCPlacementStructureSimulation(HeatBCPlacement):
     """Placement of thermal boundary conditions on the simulation box boundary."""
 
     structure: str = pd.Field(
@@ -127,10 +127,10 @@ class HeatBoundaryPlacementStructureSimulation(HeatBoundaryPlacement):
     )
 
 
-HeatBoundaryPlacementType = Union[
-    HeatBoundaryPlacementStructure,
-    HeatBoundaryPlacementStructureStructure,
-    HeatBoundaryPlacementMediumMedium,
-    HeatBoundaryPlacementSimulation,
-    HeatBoundaryPlacementStructureSimulation,
+HeatBCPlacementType = Union[
+    HeatBCPlacementStructure,
+    HeatBCPlacementStructureStructure,
+    HeatBCPlacementMediumMedium,
+    HeatBCPlacementSimulation,
+    HeatBCPlacementStructureSimulation,
 ]

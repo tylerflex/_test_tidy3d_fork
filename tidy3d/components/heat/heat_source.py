@@ -28,7 +28,7 @@ class HeatUniformSource(HeatSource):
     """
 
     geometry: GeometryType = pd.Field(
-    title="Source Geometry",
+        title="Source Geometry",
         description="Geometry of the heat source.",
     )
 

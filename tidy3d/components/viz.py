@@ -27,6 +27,10 @@ ARROW_COLOR_SOURCE = "green"
 ARROW_COLOR_POLARIZATION = "brown"
 ARROW_ALPHA = 0.8
 
+HEAT_BC_COLOR_TEMPERATURE = "orange"
+HEAT_BC_COLOR_FLUX = "green"
+HEAT_BC_COLOR_CONVECTION = "brown"
+
 
 # Arrow length in inches
 ARROW_LENGTH = 0.3
@@ -114,6 +118,7 @@ plot_params_pmc = PlotParams(alpha=1.0, facecolor="lightsteelblue", edgecolor="b
 plot_params_bloch = PlotParams(alpha=1.0, facecolor="orchid", edgecolor="black")
 plot_params_symmetry = PlotParams(edgecolor="gray", facecolor="gray", alpha=0.6)
 plot_params_override_structures = PlotParams(linewidth=0.4, edgecolor="black", fill=False)
+plot_params_heat_bc = PlotParams(lw=3)
 
 # stores color of simulation.structures for given index in simulation.medium_map
 MEDIUM_CMAP = [

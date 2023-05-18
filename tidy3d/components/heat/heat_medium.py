@@ -142,7 +142,7 @@ class HeatSpec(ABC, Tidy3dBaseModel):
 
 
 # Liquid class
-class HeatSpecLiquid(HeatSpec):
+class HeatSpecFluid(HeatSpec):
     """Liquid heat material class."""
 
 
@@ -219,4 +219,4 @@ class HeatSpecSolid(HeatSpec):
         return ax
 
 
-HeatSpecType = Union[HeatSpecLiquid, HeatSpecSolid]
+HeatSpecType = Union[HeatSpecFluid, HeatSpecSolid]

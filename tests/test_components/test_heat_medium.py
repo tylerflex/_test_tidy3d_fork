@@ -28,7 +28,7 @@ def test_temperature_dependence():
 
 
 def test_heat_spec():
-    liq = td.HeatSpecLiquid()
+    liq = td.HeatSpecFluid()
 
     perm_change = td.TemperatureDependenceLinear(ref_temp=300, coeff=0.1)
     cond_change = td.TemperatureDependenceConstant(value=0)

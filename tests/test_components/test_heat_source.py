@@ -21,5 +21,5 @@ def test_heat_source():
 
 #    # no negative temperature
 #    with pytest.raises(pydantic.ValidationError):
-#        bc = td.HeatBoundaryTemperature(temperature=-300)
+#        bc = td.HeatBCTemperature(temperature=-300)
 
