@@ -2927,6 +2927,61 @@ class CustomAnisotropicMediumInternal(CustomAnisotropicMedium):
     )
 
 
+class AbstractNonlinearMedium(AbstractMedium, ABC):
+    """Abstract nonlinear medium.
+
+    Note
+    ----
+    The nonlinear constitutive relation is solved iteratively; it may not converge
+    for strong nonlinearities. Increasing `numiters` can help with convergence.
+
+    """
+
+    numiters: pd.PositiveInt = pd.Field(
+        1,
+        title="Number of iterations",
+        description="Number of iterations for solving nonlinear constitutive relation.",
+    )
+
+
+class KerrMedium(AbstractNonlinearMedium, Medium):
+    """Kerr medium described by a chi3 nonlinear susceptibility.
+
+    Note
+    ----
+    The instantaneous nonlinear polarization is given by
+    .. math::
+
+        P_{NL} = \\epsilon_0 \\chi_3 |E|^2 E
+
+    Note
+    ----
+    The nonlinear constitutive relation is solved iteratively; it may not converge
+    for strong nonlinearities. Increasing `numiters` can help with convergence.
+
+    Note
+    ----
+    For complex fields (e.g. when using Bloch boundary conditions), the nonlinearity
+    is applied separately to the real and imaginary parts, so that the above equation
+    holds when both E and :math:`P_{NL}` are replaced by their real or imaginary parts.
+    The nonlinearity is only applied to the real-valued fields since they are the
+    physical fields.
+
+    Note
+    ----
+    Different field components do not interact nonlinearly. For example,
+    when calculating :math:`P_{NL}_x`, we approximate :math:`|E|^2 \\approx |E_x|^2`.
+    This approximation is valid when the E field is predominantly polarized along one
+    of the x, y, or z axes.
+
+    Example
+    -------
+    >>> medium = KerrMedium(chi3=1)
+    """
+
+    chi3: float = pd.Field(..., title="Chi3", description="Chi3 nonlinear susceptibility.")
+
+
 # types of mediums that can be used in Simulation and Structures
 
 MediumType3D = Union[
@@ -2946,6 +3001,7 @@ MediumType3D = Union[
     CustomDebye,
     CustomDrude,
     CustomAnisotropicMedium,
+    KerrMedium,
 ]
 
 
