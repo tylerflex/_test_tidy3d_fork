@@ -7,12 +7,12 @@ from typing import Union, Tuple
 import pydantic as pd
 import numpy as np
 
-from ..base import Tidy3dBaseModel
-from ..types import ArrayFloat1D, Ax
-from ..viz import add_ax_if_none
+from ....components.base import Tidy3dBaseModel
+from ....components.types import ArrayFloat1D, Ax
+from ....components.viz import add_ax_if_none
 
-from ...exceptions import SetupError
-from ...constants import KELVIN, HEAT_FLUX, HEAT_TRANSFER_COEFF
+from ....exceptions import SetupError
+from ....constants import KELVIN, HEAT_FLUX, HEAT_TRANSFER_COEFF
 
 
 class HeatBC(ABC, Tidy3dBaseModel):

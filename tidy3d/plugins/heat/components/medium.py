@@ -7,12 +7,16 @@ from typing import Union
 import pydantic as pd
 import numpy as np
 
-from ..base import Tidy3dBaseModel
-from ..types import ArrayFloat1D, Ax
-from ..viz import add_ax_if_none
+from ....components.base import Tidy3dBaseModel
+from ....components.types import ArrayFloat1D, Ax
+from ....components.viz import add_ax_if_none
+from ....components.medium import Medium, CustomMedium
+from ....components.data.data_array import ScalarFieldDataArray
+from ....components.data.dataset import PermittivityDataset
 
-from ...constants import KELVIN, DENSITY, SPECIFIC_HEAT_CAPACITY, THERMAL_CONDUCTIVITY, PERMITTIVITY
-from ...constants import CONDUCTIVITY
+
+from ....constants import KELVIN, DENSITY, SPECIFIC_HEAT_CAPACITY, THERMAL_CONDUCTIVITY, PERMITTIVITY
+from ....constants import CONDUCTIVITY
 
 
 class TemperatureDependence(ABC, Tidy3dBaseModel):
@@ -220,3 +224,54 @@ class HeatSpecSolid(HeatSpec):
 
 
 HeatSpecType = Union[HeatSpecFluid, HeatSpecSolid]
+
+
+class HeatMedium(Medium):
+
+    heat_spec: HeatSpecType = pd.Field(
+        None,
+        title="Heat Specification",
+        description="Specification of thermal properties for the medium. If ``None``, this material"
+        " will be excluded from heat simulations."
+    )
+
+    def to_medium(self):
+        """Create an analogous Tidy3d medium without heat specs. """
+
+        med_dict = self.dict(
+            exclude={
+                "type",
+                "heat_spec",
+            }
+        )
+
+        return Medium.parse_obj(med_dict)
+
+    def to_medium_after_heat(self, temperature_data) -> CustomMedium:
+        """Apply heat data sample on Yee grid to the medium and create the resulting CustomMedium. """
+
+        if isinstance(self.heat_spec, HeatSpecFluid):
+            return self.to_medium()
+
+        # sample material
+        eps_components = {}
+
+        for d in "xyz":
+
+            temp_values = temperature_data[d]
+            x = temp_values.coords["x"]
+            y = temp_values.coords["y"]
+            z = temp_values.coords["z"]
+
+            perm_values = self.permittivity + self.heat_spec.permittivity_change.sample(temp_values.data)
+            cond_values = self.conductivity + self.heat_spec.conductivity_change.sample(temp_values.data)
+            freq = 1
+            eps_values = self.eps_sigma_to_eps_complex(perm_values, cond_values, freq)
+            eps_components[f"eps_{d}{d}"] = ScalarFieldDataArray(eps_values, coords=dict(x=x, y=y, z=z, f=[freq]))
+
+        # pack into a CustomMedium
+        eps_dataset = PermittivityDataset(**eps_components)
+        return CustomMedium(eps_dataset=eps_dataset, interp_method="nearest")
+
+
+HeatMediumType = Union[HeatMedium]

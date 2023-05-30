@@ -25,8 +25,6 @@ from ..constants import HERTZ, CONDUCTIVITY, PERMITTIVITY, RADPERSEC, MICROMETER
 from ..exceptions import ValidationError, SetupError
 from ..log import log
 from .transformation import RotationType
-from .heat.heat_medium import HeatSpecType
-
 
 
 # evaluate frequency as this number (Hz) if inf
@@ -82,13 +80,6 @@ class AbstractMedium(ABC, Tidy3dBaseModel):
         title="Frequency Range",
         description="Optional range of validity for the medium.",
         units=(HERTZ, HERTZ),
-    )
-
-    heat_spec: HeatSpecType = pd.Field(
-        None,
-        title="Heat Specification",
-        description="Specification of thermal properties for the medium. If ``None``, this material"
-        " will be excluded from heat simulations."
     )
 
     _name_validator = validate_name_str()

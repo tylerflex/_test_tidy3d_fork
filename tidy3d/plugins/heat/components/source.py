@@ -6,13 +6,13 @@ from typing import Union
 
 import pydantic as pd
 
-from ..base import Tidy3dBaseModel
+from ....components.base import Tidy3dBaseModel
 # from ..types import ArrayFloat1D, Ax
 # from ..viz import add_ax_if_none
-from ..geometry import GeometryType
-from ..data.data_array import TimeDataArray, ScalarFieldTimeDataArray
+from ....components.geometry import GeometryType
+from ....components.data.data_array import TimeDataArray, ScalarFieldTimeDataArray
 
-from ...constants import VOLUMETRIC_HEAT_RATE
+from ....constants import VOLUMETRIC_HEAT_RATE
 
 
 class HeatSource(ABC, Tidy3dBaseModel):

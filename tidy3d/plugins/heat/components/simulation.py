@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 # from abc import ABC, abstractmethod
-from typing import Tuple, List
+from typing import Tuple, List, Union
 
 import pydantic as pd
 # import numpy as np
@@ -10,30 +10,33 @@ import pydantic as pd
 from shapely.plotting import plot_line
 from shapely import LineString, MultiLineString, GeometryCollection
 
-from .heat_source import HeatSourceType
-from .heat_boundary import HeatBCTemperature, HeatBCFlux, HeatBCConvection
-from .heat_boundary import HeatBCPlacementType
-from .heat_boundary import HeatBCPlacementStructure, HeatBCPlacementStructureStructure
-from .heat_boundary import HeatBCPlacementStructureSimulation, HeatBCPlacementSimulation
-from .heat_boundary import HeatBCPlacementMediumMedium
+from .source import HeatSourceType
+from .medium import HeatMediumType
+from .structure import HeatStructureType
+from .boundary import HeatBCTemperature, HeatBCFlux, HeatBCConvection
+from .boundary import HeatBCPlacementType
+from .boundary import HeatBCPlacementStructure, HeatBCPlacementStructureStructure
+from .boundary import HeatBCPlacementStructureSimulation, HeatBCPlacementSimulation
+from .boundary import HeatBCPlacementMediumMedium
+from .viz import HEAT_BC_COLOR_TEMPERATURE, HEAT_BC_COLOR_FLUX, HEAT_BC_COLOR_CONVECTION, plot_params_heat_bc
 
-from ..base import Tidy3dBaseModel, cached_property
-from ..types import Ax, Shapely
-from ..viz import add_ax_if_none, equal_aspect, plot_params_heat_bc, PlotParams
-from ..viz import HEAT_BC_COLOR_TEMPERATURE, HEAT_BC_COLOR_FLUX, HEAT_BC_COLOR_CONVECTION
-from ..simulation import Simulation
-from ..structure import Structure
-from ..geometry import Box
+from ....components.base import cached_property
+from ....components.types import Ax, Shapely
+from ....components.viz import add_ax_if_none, equal_aspect, PlotParams
+from ....components.simulation import Simulation
+from ....components.structure import Structure
+from ....components.geometry import Box
+from ....components.medium import MediumType3D, Medium
 
-from ...exceptions import SetupError
-from ...constants import inf
-# from ...constants import KELVIN, DENSITY, SPECIFIC_HEAT_CAPACITY, THERMAL_CONDUCTIVITY, PERMITTIVITY
-# from ...constants import CONDUCTIVITY, HEAT_FLUX
+from ....exceptions import SetupError
+from ....constants import inf
+# from ....constants import KELVIN, DENSITY, SPECIFIC_HEAT_CAPACITY, THERMAL_CONDUCTIVITY, PERMITTIVITY
+# from ....constants import CONDUCTIVITY, HEAT_FLUX
 
 HEAT_BACK_STRUCTURE_STR = "<<<HEAT_BACKGROUND_STRUCTURE>>>"
 
 
-class HeatSimulation(Tidy3dBaseModel):
+class HeatSimulation(Simulation):
     """Contains all information about heat simulation.
 
     Example
@@ -41,18 +44,27 @@ class HeatSimulation(Tidy3dBaseModel):
     >>> FIXME
     """
 
-    simulation: Simulation = pd.Field(
-        title="Simulation",
-        description="Tidy3D simulation object describing problem geometry.",
+    medium: Union[MediumType3D, HeatMediumType] = pd.Field(
+        Medium(),
+        title="Background Medium",
+        description="Background medium of simulation, defaults to vacuum if not specified.",
     )
 
-    sources: Tuple[HeatSourceType, ...] = pd.Field(
+    structures: Tuple[HeatStructureType, ...] = pd.Field(
+        (),
+        title="Structures",
+        description="Tuple of structures present in simulation. "
+        "Note: Structures defined later in this list override the "
+        "simulation material properties in regions of spatial overlap.",
+    )
+
+    heat_sources: Tuple[HeatSourceType, ...] = pd.Field(
         (),
         title="Heat Sources",
         description="List of heat sources.",
     )
 
-    boundary_conditions: Tuple[HeatBCPlacementType, ...] = pd.Field(
+    heat_boundary_conditions: Tuple[HeatBCPlacementType, ...] = pd.Field(
         (),
         title="Boundary Conditions",
         description="List of boundary conditions.",
@@ -70,11 +82,11 @@ class HeatSimulation(Tidy3dBaseModel):
         "solved in the entire domain of the Tidy3D simulation."
     )
 
-    @pd.validator("boundary_conditions", always=True)
+    @pd.validator("heat_boundary_conditions", always=True)
     def names_exist(cls, val, values):
         """Error if boundary conditions point to non-existing structures/media"""
-        structures = values["simulation"].structures
-        mediums = values["simulation"].mediums
+        structures = values.get("structures")
+        mediums = {structure.medium for structure in structures}
         structures_names = {s.name for s in structures}
         mediums_names = {m.name for m in mediums}
 
@@ -102,8 +114,8 @@ class HeatSimulation(Tidy3dBaseModel):
         return val
 
     @cached_property
-    def background_structure(self) -> Structure:
-        """Returns structure representing the background of the :class:`.HeatSimulation`."""
+    def heat_domain_structure(self) -> Structure:
+        """Returns structure representing the domain of the :class:`.HeatSimulation`."""
 
         # Unlike the FDTD Simulation.background_structure, the current one is also used to provide/
         # information about domain in which heat simulation is solved. Thus, we set its boundaries
@@ -111,9 +123,9 @@ class HeatSimulation(Tidy3dBaseModel):
         if self.heat_domain:
             heat_domain_actual = self.heat_domain
         else:
-            heat_domain_actual = self.simulation.bounding_box
+            heat_domain_actual = self.bounding_box
 
-        fdtd_background = self.simulation.background_structure
+        fdtd_background = self.background_structure
         return fdtd_background.updated_copy(geometry=heat_domain_actual, name=HEAT_BACK_STRUCTURE_STR)
 
     @equal_aspect
@@ -146,8 +158,8 @@ class HeatSimulation(Tidy3dBaseModel):
         """
 
         # get structure list
-        structures = [self.background_structure]
-        structures += list(self.simulation.structures)
+        structures = [self.heat_domain_structure]
+        structures += list(self.structures)
 
         # construct slicing plane
         axis, position = Box.parse_xyz_kwargs(x=x, y=y, z=z)
@@ -159,18 +171,18 @@ class HeatSimulation(Tidy3dBaseModel):
         boundaries = self._construct_heat_boundaries(
             structures=structures,
             plane=plane,
-            boundary_conditions=self.boundary_conditions,
+            boundary_conditions=self.heat_boundary_conditions,
         )
 
         # plot boundary conditions
         for (bc, bdry) in boundaries:
             ax = self._plot_boundary_condition(boundary=bdry, condition=bc, ax=ax)
 
-        ax = self.simulation._set_plot_bounds(ax=ax, x=x, y=y, z=z)
+        ax = self._set_plot_bounds(ax=ax, x=x, y=y, z=z)
 
         # clean up the axis display
-        axis, position = self.simulation.parse_xyz_kwargs(x=x, y=y, z=z)
-        ax = self.simulation.add_ax_labels_lims(axis=axis, ax=ax)
+        axis, position = self.parse_xyz_kwargs(x=x, y=y, z=z)
+        ax = self.add_ax_labels_lims(axis=axis, ax=ax)
         ax.set_title(f"cross section at {'xyz'[axis]}={position:.2f}")
 
         return ax
@@ -364,6 +376,7 @@ class HeatSimulation(Tidy3dBaseModel):
                     for bc in med_to_bc[_medium.name]:
                         if medium.name in bc.mediums:
                             bdry = shape.exterior.intersection(_shape)
+                            bdry = bdry.intersection(background_structure_shape)
                             boundaries.append((bc, name, bdry, bdry.bounds))
 
                 # same medium, add diff shape to this shape and mark background shape for removal
