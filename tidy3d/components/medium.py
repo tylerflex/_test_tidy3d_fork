@@ -9,7 +9,8 @@ from math import isclose
 
 import pydantic as pd
 import numpy as np
-import xarray as xr
+
+# import xarray as xr
 
 from .base import Tidy3dBaseModel, cached_property
 from .grid.grid import Coords, Grid

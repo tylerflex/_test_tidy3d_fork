@@ -2,10 +2,10 @@
 from __future__ import annotations
 from typing import Dict, List
 
-import xarray as xr
+# import xarray as xr
 import numpy as np
-import dask
-import h5py
+# import dask
+# import h5py
 
 from ...constants import HERTZ, SECOND, MICROMETER, RADIAN
 from ...exceptions import DataError, FileError
@@ -35,7 +35,7 @@ DIM_ATTRS = {
 DATA_ARRAY_VALUE_NAME = "__xarray_dataarray_variable__"
 
 
-class DataArray(xr.DataArray):
+class DataArray(): # xr.DataArray):
     """Subclass of ``xr.DataArray`` that requires _dims to match the keys of the coords."""
 
     # Always set __slots__ = () to avoid xarray warnings

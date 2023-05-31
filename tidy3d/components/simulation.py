@@ -6,10 +6,11 @@ from math import isclose
 
 import pydantic
 import numpy as np
-import xarray as xr
-import matplotlib.pylab as plt
-import matplotlib as mpl
-from mpl_toolkits.axes_grid1 import make_axes_locatable
+
+# import xarray as xr
+# import matplotlib.pylab as plt
+# import matplotlib as mpl
+# from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 from .base import cached_property
 from .validators import assert_unique_names, assert_objects_in_sim_bounds
@@ -474,7 +475,6 @@ class Simulation(Box):  # pylint:disable=too-many-public-methods
         sources = values.get("sources")
 
         if (not structures) or (not sources):
-
             return val
 
         with log as consolidated_logger:
@@ -1381,7 +1381,7 @@ class Simulation(Box):  # pylint:disable=too-many-public-methods
         medium_shapes = self._get_structures_plane(structures=self.structures, x=x, y=y, z=z)
         medium_map = self.medium_map
 
-        for (medium, shape) in medium_shapes:
+        for medium, shape in medium_shapes:
             mat_index = medium_map[medium]
             ax = self._plot_shape_structure(medium=medium, mat_index=mat_index, shape=shape, ax=ax)
 
@@ -1496,7 +1496,7 @@ class Simulation(Box):  # pylint:disable=too-many-public-methods
             medium_shapes = self._get_structures_plane(structures=structures, x=x, y=y, z=z)
 
         eps_min, eps_max = self.eps_bounds(freq=freq)
-        for (medium, shape) in medium_shapes:
+        for medium, shape in medium_shapes:
             # if the background medium is custom medium, it needs to be rendered separately
             if medium == self.medium and alpha < 1 and not isinstance(medium, AbstractCustomMedium):
                 continue
@@ -2198,7 +2198,6 @@ class Simulation(Box):  # pylint:disable=too-many-public-methods
 
         shapes = []
         for structure in structures:
-
             # get list of Shapely shapes that intersect at the plane
             shapes_plane = structure.geometry.intersections_2dbox(plane)
 
@@ -2208,12 +2207,10 @@ class Simulation(Box):  # pylint:disable=too-many-public-methods
 
         background_shapes = []
         for medium, shape, bounds in shapes:
-
             minx, miny, maxx, maxy = bounds
 
             # loop through background_shapes (note: all background are non-intersecting or merged)
             for index, (_medium, _shape, _bounds) in enumerate(background_shapes):
-
                 _minx, _miny, _maxx, _maxy = _bounds
 
                 # do a bounding box check to see if any intersection to do anything about
@@ -2459,7 +2456,7 @@ class Simulation(Box):  # pylint:disable=too-many-public-methods
         bmin_new, bmax_new = [], []
 
         zipped = zip(self.center, self.symmetry, bounds_min, bounds_max, sim_bs_min, sim_bs_max)
-        for (center, sym, bmin, bmax, sim_bmin, sim_bmax) in zipped:
+        for center, sym, bmin, bmax, sim_bmin, sim_bmax in zipped:
             if sym == 0 or center < bmin:
                 bmin_tmp, bmax_tmp = bmin, bmax
             elif bmax < center:

@@ -7,9 +7,9 @@ from functools import wraps
 import random
 import time
 
-import matplotlib.pylab as plt
-from matplotlib.patches import PathPatch, ArrowStyle
-from matplotlib.path import Path
+# import matplotlib.pylab as plt
+# from matplotlib.patches import PathPatch, ArrowStyle
+# from matplotlib.path import Path
 from numpy import array, concatenate, ones
 import pydantic as pd
 
@@ -131,7 +131,7 @@ MEDIUM_CMAP = [
 STRUCTURE_EPS_CMAP = "gist_yarg"
 
 # default arrow style
-arrow_style = ArrowStyle.Simple(head_length=12, head_width=9, tail_width=4)
+arrow_style = {} # ArrowStyle.Simple(head_length=12, head_width=9, tail_width=4)
 
 
 """=================================================================================================

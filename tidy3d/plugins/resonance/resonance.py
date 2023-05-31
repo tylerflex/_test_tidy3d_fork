@@ -6,7 +6,8 @@ from functools import partial
 
 import numpy as np
 import scipy.linalg
-import xarray as xr
+
+# import xarray as xr
 
 from pydantic import Field, NonNegativeFloat, PositiveInt, validator
 
@@ -316,7 +317,6 @@ class ResonanceFinder(Tidy3dBaseModel):
 
         u_matrices = np.zeros((3, nfreqs, nfreqs), dtype=complex)
         for pval in range(3):
-
             u_matrices[pval, :, :] = prefactor * (
                 np.outer(zvals, zinvl[:, : half_len + 1] @ signal[pval:][: half_len + 1])
                 + np.outer(
