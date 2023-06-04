@@ -18,5 +18,7 @@ class HeatStructure(Structure):
         description="Medium of the structure, which is heat solver compatible.",
     )
 
+    def to_structure(self) -> Structure:
+        return Structure(geometry=self.geometry, medium=self.medium.to_medium())
 
 HeatStructureType = Union[Structure, HeatStructure]

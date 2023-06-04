@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Union
+from typing import Union, Dict
 
 import pydantic as pd
 import numpy as np
@@ -17,6 +17,8 @@ from ....components.data.dataset import PermittivityDataset
 
 from ....constants import KELVIN, DENSITY, SPECIFIC_HEAT_CAPACITY, THERMAL_CONDUCTIVITY, PERMITTIVITY
 from ....constants import CONDUCTIVITY
+
+from .data_array import TemperatureFieldType
 
 
 class TemperatureDependence(ABC, Tidy3dBaseModel):
@@ -247,7 +249,7 @@ class HeatMedium(Medium):
 
         return Medium.parse_obj(med_dict)
 
-    def to_medium_after_heat(self, temperature_data) -> CustomMedium:
+    def to_medium_after_heat(self, temperature_data: Dict[str, TemperatureFieldType]) -> CustomMedium:
         """Apply heat data sample on Yee grid to the medium and create the resulting CustomMedium. """
 
         if isinstance(self.heat_spec, HeatSpecFluid):

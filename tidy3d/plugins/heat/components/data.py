@@ -10,21 +10,15 @@ import pydantic as pd
 from .simulation import HeatSimulation
 from .medium import HeatSpecSolid
 from .structure import HeatStructure
+from .data_array import TemperatureFieldType
 
 from ....components.base import Tidy3dBaseModel
 from ....components.simulation import Simulation
 from ....components.structure import Structure
-from ....components.medium import CustomMedium
-from ....components.data.data_array import ScalarFieldTimeDataArray, ScalarFieldDataArray
-from ....components.data.dataset import PermittivityDataset
 # from ..types import ArrayFloat1D, Ax
 # from ..viz import add_ax_if_none
 
-# from ...constants import KELVIN, DENSITY, SPECIFIC_HEAT_CAPACITY, THERMAL_CONDUCTIVITY, PERMITTIVITY
-# from ...constants import CONDUCTIVITY, HEAT_FLUX
-
-
-TemperatureFieldType = Union[ScalarFieldTimeDataArray]
+from ....constants import KELVIN
 
 
 class HeatSimulationData(Tidy3dBaseModel):
@@ -42,6 +36,7 @@ class HeatSimulationData(Tidy3dBaseModel):
     temperature_data: TemperatureFieldType = pd.Field(
         title="Temperature Field",
         description="Temperature field obtained from heat simulation.",
+        units=KELVIN,
     )
 
     def apply_heat_to_sim(self) -> Simulation:
@@ -50,15 +45,20 @@ class HeatSimulationData(Tidy3dBaseModel):
         sim_dict = self.heat_simulation.dict(
             exclude={
                 "type",
-                "structures",
+                "heat_medium",
+                "heat_structures",
                 "heat_sources",
                 "heat_boundary_conditions",
                 "heat_domain",
             }
         )
-        sim = Simulation.parse_obj(sim_dict)
-        structures = self.heat_simulation.structures
+        structures = self.heat_simulation.heat_structures
 
+        # For each structure that contains HeatSpecSolid sample temperature field and obtain
+        # perturbed medium as a CustomMedium. Pack it into a regular Structure.
+        # Currently we perform separate interpolation inside the bounding box of each HeatStructure,
+        # a more efficient approach could be interpolating once on the entire grid and then
+        # selecting subsets of points corresponding to each structure
         new_structures = []
         for s in structures:
             if isinstance(s, HeatStructure):
@@ -69,7 +69,7 @@ class HeatSimulationData(Tidy3dBaseModel):
                     bounding_box = s.geometry.bounding_box
 
                     # get mesh covering region of interest
-                    sub_grid = sim.discretize(bounding_box)
+                    sub_grid = self.heat_simulation.discretize(bounding_box)
 
                     # sample temperature
                     temp_values = {}
@@ -89,5 +89,31 @@ class HeatSimulationData(Tidy3dBaseModel):
                 new_s = Structure(medium=new_medium, geometry=s.geometry)
                 new_structures.append(new_s)
 
-        return sim.updated_copy(structures=new_structures)
+        sim_dict["structures"] = new_structures
+
+        med = self.heat_simulation.heat_medium
+        heat_spec = med.heat_spec
+        if isinstance(heat_spec, HeatSpecSolid):
+
+            # get mesh covering region of interest
+            sub_grid = self.heat_simulation.grid
+
+            # sample temperature
+            temp_values = {}
+
+            for d in "xyz":
+                coords = sub_grid[f"E{d}"]
+                x = coords.x
+                y = coords.y
+                z = coords.z
+
+                temp_values[d] = self.temperature_data.interp(x=x, y=y, z=z)
+
+            new_medium = med.to_medium_after_heat(temp_values)
+        else:
+            new_medium = med.to_medium()
+
+        sim_dict["medium"] = new_medium
+
+        return Simulation.parse_obj(sim_dict)
 

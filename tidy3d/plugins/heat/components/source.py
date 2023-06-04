@@ -6,17 +6,23 @@ from typing import Union
 
 import pydantic as pd
 
-from ....components.base import Tidy3dBaseModel
-# from ..types import ArrayFloat1D, Ax
-# from ..viz import add_ax_if_none
+from .viz import plot_params_heat_source
+
+from ....components.base import Tidy3dBaseModel, cached_property
 from ....components.geometry import GeometryType
 from ....components.data.data_array import TimeDataArray, ScalarFieldTimeDataArray
+from ....components.viz import PlotParams
 
 from ....constants import VOLUMETRIC_HEAT_RATE
 
 
 class HeatSource(ABC, Tidy3dBaseModel):
     """Abstract heat source."""
+
+    @cached_property
+    def plot_params(self) -> PlotParams:
+        """Default parameters for plotting a Source object."""
+        return plot_params_heat_source
 
 
 class HeatUniformSource(HeatSource):

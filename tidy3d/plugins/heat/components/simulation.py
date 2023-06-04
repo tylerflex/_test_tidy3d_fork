@@ -12,13 +12,14 @@ from shapely import LineString, MultiLineString, GeometryCollection
 
 from .source import HeatSourceType
 from .medium import HeatMediumType
-from .structure import HeatStructureType
+from .structure import HeatStructureType, HeatStructure
 from .boundary import HeatBCTemperature, HeatBCFlux, HeatBCConvection
 from .boundary import HeatBCPlacementType
 from .boundary import HeatBCPlacementStructure, HeatBCPlacementStructureStructure
 from .boundary import HeatBCPlacementStructureSimulation, HeatBCPlacementSimulation
 from .boundary import HeatBCPlacementMediumMedium
 from .viz import HEAT_BC_COLOR_TEMPERATURE, HEAT_BC_COLOR_FLUX, HEAT_BC_COLOR_CONVECTION, plot_params_heat_bc
+from .viz import plot_params_heat_bc, plot_params_heat_source
 
 from ....components.base import cached_property
 from ....components.types import Ax, Shapely
@@ -28,7 +29,7 @@ from ....components.structure import Structure
 from ....components.geometry import Box
 from ....components.medium import MediumType3D, Medium
 
-from ....exceptions import SetupError
+from ....exceptions import SetupError, ValidationError
 from ....constants import inf
 # from ....constants import KELVIN, DENSITY, SPECIFIC_HEAT_CAPACITY, THERMAL_CONDUCTIVITY, PERMITTIVITY
 # from ....constants import CONDUCTIVITY, HEAT_FLUX
@@ -44,13 +45,13 @@ class HeatSimulation(Simulation):
     >>> FIXME
     """
 
-    medium: Union[MediumType3D, HeatMediumType] = pd.Field(
+    heat_medium: Union[MediumType3D, HeatMediumType] = pd.Field(
         Medium(),
         title="Background Medium",
         description="Background medium of simulation, defaults to vacuum if not specified.",
     )
 
-    structures: Tuple[HeatStructureType, ...] = pd.Field(
+    heat_structures: Tuple[HeatStructureType, ...] = pd.Field(
         (),
         title="Structures",
         description="Tuple of structures present in simulation. "
@@ -82,10 +83,52 @@ class HeatSimulation(Simulation):
         "solved in the entire domain of the Tidy3D simulation."
     )
 
+#    @pd.validator("medium", always=True)
+#    def cannot_use_medium_field(cls, val, values):
+#        if val != Medium():
+#            raise ValidationError("Cannot use medium field, use heat_medium instead.")
+#        else:
+#            return val
+
+#    @pd.validator("structures", always=True)
+#    def cannot_use_structures_field(cls, val, values):
+#        if val != ():
+#            raise ValidationError("Cannot use structures field, use heat_structures instead.")
+#        else:
+#            return val
+
+    @pd.root_validator(skip_on_failure=True)
+    def initialize_medium_and_structures(cls, values):
+
+        if values.get("medium") != Medium():
+            print("Warning: HeatSimulation.medium is being overwritten by HeatSimulation.heat_medium")
+
+        if values.get("structures") != ():
+            print("Warning: HeatSimulation.structures is being overwritten by HeatSimulation.heat_structures")
+
+        print("test1")
+        heat_med = values.get("heat_medium")
+        if isinstance(heat_med, HeatMediumType):
+            new_med = heat_med.to_medium()
+        else:
+            new_med = heat_med
+
+        print("test2")
+        heat_structures = values.get("heat_structures")
+        new_structures = []
+        for s in heat_structures:
+            if isinstance(s, HeatStructure):
+                new_structures.append(s.to_structure())
+            else:
+                new_structures.append(s)
+
+        values.update({"medium": new_med, "structures": new_structures})
+        return values
+
     @pd.validator("heat_boundary_conditions", always=True)
     def names_exist(cls, val, values):
         """Error if boundary conditions point to non-existing structures/media"""
-        structures = values.get("structures")
+        structures = values.get("heat_structures")
         mediums = {structure.medium for structure in structures}
         structures_names = {s.name for s in structures}
         mediums_names = {m.name for m in mediums}
@@ -113,6 +156,39 @@ class HeatSimulation(Simulation):
                         )
         return val
 
+    def to_simulation(self) -> Simulation:
+        """Returns underlying :class:`.Simulation` object."""
+
+        sim_dict = self.dict(
+            exclude={
+                "type",
+                "heat_medium",
+                "heat_structures",
+                "heat_sources",
+                "heat_boundary_conditions",
+                "heat_domain",
+            }
+        )
+
+#        heat_med = self.heat_medium
+#        print("validator heat medium: ", heat_med)
+#        if isinstance(heat_med, HeatMediumType):
+#            new_med = heat_med.to_medium()
+#        else:
+#            new_med = heat_med
+
+#        heat_structures = self.heat_structures
+#        print("validator heat_structures: ", heat_structures)
+#        new_structures = []
+#        for s in heat_structures:
+#            if isinstance(s, HeatStructure):
+#                new_structures.append(s.to_structure())
+#            else:
+#                new_structures.append(s)
+
+#        sim_dict.update({"medium": new_med, "structures": new_structures})
+        return Simulation.parse_obj(sim_dict)
+
     @cached_property
     def heat_domain_structure(self) -> Structure:
         """Returns structure representing the domain of the :class:`.HeatSimulation`."""
@@ -127,6 +203,49 @@ class HeatSimulation(Simulation):
 
         fdtd_background = self.background_structure
         return fdtd_background.updated_copy(geometry=heat_domain_actual, name=HEAT_BACK_STRUCTURE_STR)
+
+    @equal_aspect
+    @add_ax_if_none
+    def plot(
+        self,
+        x: float = None,
+        y: float = None,
+        z: float = None,
+        ax: Ax = None,
+        heat_source_alpha: float = None,
+        **patch_kwargs,
+    ) -> Ax:
+        """Plot each of simulation's components on a plane defined by one nonzero x,y,z coordinate.
+
+        Parameters
+        ----------
+        x : float = None
+            position of plane in x direction, only one of x, y, z must be specified to define plane.
+        y : float = None
+            position of plane in y direction, only one of x, y, z must be specified to define plane.
+        z : float = None
+            position of plane in z direction, only one of x, y, z must be specified to define plane.
+        source_alpha : float = None
+            Opacity of the sources. If ``None``, uses Tidy3d default.
+        monitor_alpha : float = None
+            Opacity of the monitors. If ``None``, uses Tidy3d default.
+        ax : matplotlib.axes._subplots.Axes = None
+            Matplotlib axes to plot on, if not specified, one is created.
+
+        Returns
+        -------
+        matplotlib.axes._subplots.Axes
+            The supplied or created matplotlib axes.
+        """
+
+        ax = self.plot_structures(ax=ax, x=x, y=y, z=z)
+        ax = self.plot_heat_sources(ax=ax, x=x, y=y, z=z, alpha=heat_source_alpha)
+        ax = self.plot_symmetries(ax=ax, x=x, y=y, z=z)
+        ax = self.plot_pml(ax=ax, x=x, y=y, z=z)
+        ax = self._set_plot_bounds(ax=ax, x=x, y=y, z=z)
+        ax = self.plot_boundaries(ax=ax, x=x, y=y, z=z)
+        ax = self.plot_heat_boundaries(ax=ax, x=x, y=y, z=z)
+        return ax
 
     @equal_aspect
     @add_ax_if_none
@@ -159,7 +278,7 @@ class HeatSimulation(Simulation):
 
         # get structure list
         structures = [self.heat_domain_structure]
-        structures += list(self.structures)
+        structures += list(self.heat_structures)
 
         # construct slicing plane
         axis, position = Box.parse_xyz_kwargs(x=x, y=y, z=z)
@@ -450,3 +569,37 @@ class HeatSimulation(Simulation):
                 boundaries.append((bc, bdry))
 
         return boundaries
+
+    @equal_aspect
+    @add_ax_if_none
+    def plot_heat_sources(
+        self, x: float = None, y: float = None, z: float = None, alpha: float = None, ax: Ax = None
+    ) -> Ax:
+        """Plot each of simulation's structures on a plane defined by one nonzero x,y,z coordinate.
+
+        Parameters
+        ----------
+        x : float = None
+            position of plane in x direction, only one of x, y, z must be specified to define plane.
+        y : float = None
+            position of plane in y direction, only one of x, y, z must be specified to define plane.
+        z : float = None
+            position of plane in z direction, only one of x, y, z must be specified to define plane.
+        ax : matplotlib.axes._subplots.Axes = None
+            Matplotlib axes to plot on, if not specified, one is created.
+
+        Returns
+        -------
+        matplotlib.axes._subplots.Axes
+            The supplied or created matplotlib axes.
+        """
+
+        plot_params = plot_params_heat_source.to_kwargs()
+        if alpha:
+            plot_params["alpha"] = alpha
+
+        bounds = self.bounds
+        for source in self.heat_sources:
+            ax = source.geometry.plot(x=x, y=y, z=z, ax=ax, sim_bounds=bounds, **plot_params)
+        ax = self._set_plot_bounds(ax=ax, x=x, y=y, z=z)
+        return ax
