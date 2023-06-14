@@ -129,7 +129,9 @@ class HeatSimulation(Simulation):
     def names_exist(cls, val, values):
         """Error if boundary conditions point to non-existing structures/media"""
         structures = values.get("heat_structures")
+        heat_medium = values.get("heat_medium")
         mediums = {structure.medium for structure in structures}
+        mediums.add(heat_medium)
         structures_names = {s.name for s in structures}
         mediums_names = {m.name for m in mediums}
 
@@ -201,8 +203,9 @@ class HeatSimulation(Simulation):
         else:
             heat_domain_actual = self.bounding_box
 
-        fdtd_background = self.background_structure
-        return fdtd_background.updated_copy(geometry=heat_domain_actual, name=HEAT_BACK_STRUCTURE_STR)
+#        fdtd_background = self.background_structure
+#        return fdtd_background.updated_copy(geometry=heat_domain_actual, name=HEAT_BACK_STRUCTURE_STR)
+        return HeatStructure(geometry=heat_domain_actual, medium=self.heat_medium, name=HEAT_BACK_STRUCTURE_STR)
 
     @equal_aspect
     @add_ax_if_none

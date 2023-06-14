@@ -276,4 +276,4 @@ class HeatMedium(Medium):
         return CustomMedium(eps_dataset=eps_dataset, interp_method="nearest")
 
 
-HeatMediumType = Union[HeatMedium]
+HeatMediumType = Union[HeatMedium, Medium]
