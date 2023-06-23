@@ -50,6 +50,7 @@ class HeatSimulationData(Tidy3dBaseModel):
                 "heat_sources",
                 "heat_boundary_conditions",
                 "heat_domain",
+                "heat_grid_spec",
             }
         )
         structures = self.heat_simulation.heat_structures

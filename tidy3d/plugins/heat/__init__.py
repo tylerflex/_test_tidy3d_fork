@@ -14,3 +14,4 @@ from .components.boundary import HeatBCPlacementSimulation
 from .components.source import HeatUniformSource, HeatCustomSource
 from .components.structure import HeatStructure
 from .components.medium import HeatMedium
+from .components.grid import HeatGridUniform

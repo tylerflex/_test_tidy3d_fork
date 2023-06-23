@@ -18,6 +18,7 @@ from .boundary import HeatBCPlacementType
 from .boundary import HeatBCPlacementStructure, HeatBCPlacementStructureStructure
 from .boundary import HeatBCPlacementStructureSimulation, HeatBCPlacementSimulation
 from .boundary import HeatBCPlacementMediumMedium
+from .grid import HeatGridType
 from .viz import HEAT_BC_COLOR_TEMPERATURE, HEAT_BC_COLOR_FLUX, HEAT_BC_COLOR_CONVECTION, plot_params_heat_bc
 from .viz import plot_params_heat_bc, plot_params_heat_source
 
@@ -71,10 +72,10 @@ class HeatSimulation(Simulation):
         description="List of boundary conditions.",
     )
 
-#    grid_spec: HeatGridSpec = pd.Field(
-#        title="Grid Specification",
-#        description="Grid specification for heat simulation.",
-#    )
+    heat_grid_spec: HeatGridType = pd.Field(
+        title="Grid Specification",
+        description="Grid specification for heat simulation.",
+    )
 
     heat_domain: Box = pd.Field(
         None,
@@ -344,8 +345,9 @@ class HeatSimulation(Simulation):
             # ax.add_artist(patch)
         return ax
 
+    # pylint:disable=too-many-locals
     @staticmethod
-    def _construct_heat_boundaries(# pylint:disable=too-many-locals
+    def _construct_heat_boundaries(
         structures: List[Structure],
         plane: Box,
         boundary_conditions: List[HeatBCPlacementType],
@@ -551,12 +553,12 @@ class HeatSimulation(Simulation):
                     # event (3) from above
                     if name in _bc.structures:
                         new_bdry = _bdry.intersection(shape)
-                        boundaries_reverse[index] = (_bc, _name, new_bdry, diff_shape.bounds, True)
+                        boundaries_reverse[index] = (_bc, _name, new_bdry, new_bdry.bounds, True)
 
                     # event (2) from above
                     else:
                         new_bdry = _bdry - shape
-                        boundaries_reverse[index] = (_bc, _name, new_bdry, diff_shape.bounds, _completed)
+                        boundaries_reverse[index] = (_bc, _name, new_bdry, new_bdry.bounds, _completed)
 
             # create new boundary (event (1) from above)
             if name in struct_to_bc:
