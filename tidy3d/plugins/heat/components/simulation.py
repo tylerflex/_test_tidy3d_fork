@@ -60,11 +60,11 @@ class HeatSimulation(Simulation):
         "simulation material properties in regions of spatial overlap.",
     )
 
-    heat_sources: Tuple[HeatSourceType, ...] = pd.Field(
-        (),
-        title="Heat Sources",
-        description="List of heat sources.",
-    )
+#    heat_sources: Tuple[HeatSourceType, ...] = pd.Field(
+#        (),
+#        title="Heat Sources",
+#        description="List of heat sources.",
+#    )
 
     heat_boundary_conditions: Tuple[HeatBCPlacementType, ...] = pd.Field(
         (),
@@ -167,7 +167,7 @@ class HeatSimulation(Simulation):
                 "type",
                 "heat_medium",
                 "heat_structures",
-                "heat_sources",
+#                "heat_sources",
                 "heat_boundary_conditions",
                 "heat_domain",
             }
@@ -604,7 +604,10 @@ class HeatSimulation(Simulation):
             plot_params["alpha"] = alpha
 
         bounds = self.bounds
-        for source in self.heat_sources:
-            ax = source.geometry.plot(x=x, y=y, z=z, ax=ax, sim_bounds=bounds, **plot_params)
+#        for source in self.heat_sources:
+#            ax = source.geometry.plot(x=x, y=y, z=z, ax=ax, sim_bounds=bounds, **plot_params)
+        for struct in self.heat_structures:
+            if struct.source:
+                ax = struct.geometry.plot(x=x, y=y, z=z, ax=ax, sim_bounds=bounds, **plot_params)
         ax = self._set_plot_bounds(ax=ax, x=x, y=y, z=z)
         return ax

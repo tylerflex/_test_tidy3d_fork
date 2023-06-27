@@ -47,7 +47,7 @@ class HeatSimulationData(Tidy3dBaseModel):
                 "type",
                 "heat_medium",
                 "heat_structures",
-                "heat_sources",
+#                "heat_sources",
                 "heat_boundary_conditions",
                 "heat_domain",
                 "heat_grid_spec",

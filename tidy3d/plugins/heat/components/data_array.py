@@ -2,9 +2,9 @@
 from __future__ import annotations
 
 from typing import Union
-from ....components.data.data_array import ScalarFieldTimeDataArray
+from ....components.data.data_array import ScalarFieldTimeDataArray, SpatialDataArray
 
 
-TemperatureFieldType = Union[ScalarFieldTimeDataArray]
+TemperatureFieldType = Union[ScalarFieldTimeDataArray, SpatialDataArray]
 
 # TODO: unstructured data?
