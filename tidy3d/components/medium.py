@@ -84,6 +84,18 @@ class AbstractMedium(ABC, Tidy3dBaseModel):
 
     _name_validator = validate_name_str()
 
+    heat_perturbation: HeatMediumPerturbationType = pd.Field(
+        None,
+        title="Heat Perturbation",
+        description="Specification of medium parameters perturbation due to thermal effects.",
+    )
+
+    charge_perturbation: ChargeMediumPerturbationType = pd.Field(
+        None,
+        title="Charge Perturbation",
+        description="Specification of medium parameters perturbation due to charge effects.",
+    )
+
     @abstractmethod
     def eps_model(self, frequency: float) -> complex:
         """Complex-valued permittivity as a function of frequency.
