@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Surface integration monitor validator changed to error only if *all* integration surfaces are outside of the simulation domain.
+- Create tasks or mode solver will upload simulation.hdf5.gz file.
+- `web.download_json()` will download simulation.hdf5.gz and unzip it, then load the json from the hdf5 file.
+- `SimulationTask.get_simulation_hdf5()` will download simulation.hdf5.gz and unzip it to hdf5 file.
 
 ## [2.3.1] - 2023-7-14
 
