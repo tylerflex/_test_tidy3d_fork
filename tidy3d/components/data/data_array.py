@@ -447,6 +447,33 @@ class TriangleMeshDataArray(DataArray):
     _data_attrs = {"long_name": "surface mesh triangles"}
 
 
+class HeatDataArray(DataArray):
+    """Heat data array.
+
+    Example
+    -------
+    >>> T = [0, 1e-12, 2e-12]
+    >>> td = HeatDataArray((1+1j) * np.random.random((3,)), coords=dict(T=T))
+    """
+
+    __slots__ = ()
+    _dims = "T"
+
+
+class ChargeDataArray(DataArray):
+    """Charge data array.
+
+    Example
+    -------
+    >>> n = [0, 1e-12, 2e-12]
+    >>> p = [0, 3e-12, 4e-12]
+    >>> td = ChargeDataArray((1+1j) * np.random.random((3,3)), coords=dict(n=n, p=p))
+    """
+
+    __slots__ = ()
+    _dims = ("n", "p")
+
+
 DATA_ARRAY_TYPES = [
     SpatialDataArray,
     ScalarFieldDataArray,
@@ -465,5 +492,7 @@ DATA_ARRAY_TYPES = [
     TimeDataArray,
     FreqModeDataArray,
     TriangleMeshDataArray,
+    HeatDataArray,
+    ChargeDataArray,
 ]
 DATA_ARRAY_MAP = {data_array.__name__: data_array for data_array in DATA_ARRAY_TYPES}

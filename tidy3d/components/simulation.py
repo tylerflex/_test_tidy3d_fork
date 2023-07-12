@@ -15,12 +15,12 @@ from .base import cached_property
 from .validators import assert_unique_names, assert_objects_in_sim_bounds
 from .validators import validate_mode_objects_symmetry
 from .geometry import Box, TriangleMesh, Geometry, PolySlab, Cylinder
-from .types import Ax, Shapely, FreqBound, Axis, annotate_type, Symmetry
+from .types import Ax, Shapely, FreqBound, Axis, annotate_type, Symmetry, Bound, TYPE_TAG_STR
 from .grid.grid import Coords1D, Grid, Coords
 from .grid.grid_spec import GridSpec, UniformGrid, AutoGrid
 from .medium import Medium, MediumType, AbstractMedium, PECMedium
 from .medium import AbstractCustomMedium, Medium2D, MediumType3D
-from .medium import AnisotropicMedium, FullyAnisotropicMedium
+from .medium import AnisotropicMedium, FullyAnisotropicMedium, AbstractPerturbationMedium
 from .boundary import BoundarySpec, BlochBoundary, PECBoundary, PMCBoundary, Periodic
 from .boundary import PML, StablePML, Absorber, AbsorberSpec
 from .structure import Structure
@@ -30,6 +30,7 @@ from .source import TFSF, Source
 from .monitor import MonitorType, Monitor, FreqMonitor, SurfaceIntegrationMonitor
 from .monitor import AbstractFieldMonitor, DiffractionMonitor, AbstractFieldProjectionMonitor
 from .data.dataset import Dataset
+from .data.data_array import SpatialDataArray
 from .viz import add_ax_if_none, equal_aspect
 
 from .viz import MEDIUM_CMAP, STRUCTURE_EPS_CMAP, PlotParams, plot_params_symmetry, polygon_path
@@ -133,6 +134,7 @@ class Simulation(Box):  # pylint:disable=too-many-public-methods
         Medium(),
         title="Background Medium",
         description="Background medium of simulation, defaults to vacuum if not specified.",
+        discriminator=TYPE_TAG_STR,
     )
 
     symmetry: Tuple[Symmetry, Symmetry, Symmetry] = pydantic.Field(
@@ -1540,8 +1542,9 @@ class Simulation(Box):  # pylint:disable=too-many-public-methods
             for medium in medium_list
             if not isinstance(medium, AbstractCustomMedium)
         ]
-        eps_min = min(1, min(eps_list))
-        eps_max = max(1, max(eps_list))
+        eps_list.append(1)
+        eps_min = min(eps_list)
+        eps_max = max(eps_list)
         # custom medium, the min and max in the supplied dataset over all components and
         # spatial locations.
         for mat in [medium for medium in medium_list if isinstance(medium, AbstractCustomMedium)]:
@@ -2817,3 +2820,142 @@ class Simulation(Box):  # pylint:disable=too-many-public-methods
             elif medium.allow_gain:
                 return True
         return False
+
+    @staticmethod
+    def _sel_data_inside_bounds(data: SpatialDataArray, bounds: Bound) -> Tuple[bool, SpatialDataArray]:
+
+        if data is None:
+            return True, None
+
+        is_full_cover = True
+
+        inds_list = []
+
+        for coord, smin, smax in zip(
+            data.coords.values(),
+            bounds[0],
+            bounds[1]
+        ):
+
+            length = len(coord)
+
+            # if data does not cover structure at all take the closest index
+            if smax < coord[0]:  # structure is completely on the left side
+
+                # take 2 if possible, so that linear iterpolation is possible
+                comp_inds = np.arange(0, max(2, length))
+                is_full_cover = False
+
+            elif smin > coord[-1]:  # structure is completely on the right side
+
+                # take 2 if possible, so that linear iterpolation is possible
+                comp_inds = np.arange(min(0, length - 2), length)
+                is_full_cover = False
+
+            else:
+                if smin < coord[0]:
+                    is_full_cover = False
+                    ind_min = 0
+                else:
+                    ind_min = max(0, (coord >= smin).argmax().data - 1)
+
+                if smax > coord[-1]:
+                    is_full_cover = False
+                    ind_max = length - 1
+                else:
+                    ind_max = (coord >= smax).argmax().data
+
+                comp_inds = np.arange(ind_min, ind_max + 1)
+
+            inds_list.append(comp_inds)
+
+        return is_full_cover, data.isel(x=inds_list[0], y=inds_list[1], z=inds_list[2])
+
+    def apply_perturbations(
+        self,
+        temperature: SpatialDataArray = None,
+        electron_density: SpatialDataArray = None,
+        hole_density: SpatialDataArray = None,
+    ) -> Simulation:
+        """Apply heat and/or charge data to perturbation mediums contained in the Simulation
+        replacing them by corresponding spatially dependent custom mediums. Any of temperature,
+        electron_density, and hole_density can be 'None'. All provided fields must have identical
+        coords.
+
+        Parameters
+        ----------
+        temperature : SpatialDataArray = None
+            Temperature field data.
+        electron_density : SpatialDataArray = None
+            Electron density field data.
+        hole_density : SpatialDataArray = None
+            Hole density field data.
+
+        Returns
+        -------
+        Simulation
+            Simulation after application of heat and/or charge data.
+        """
+
+        sim_dict = self.dict()
+        structures = self.structures
+        sim_bounds = self.bounds_pml
+
+        # For each structure that contains HeatSpecSolid sample temperature field and obtain
+        # perturbed medium as a CustomMedium. Pack it into a regular Structure.
+        # Currently we perform separate interpolation inside the bounding box of each HeatStructure,
+        # a more efficient approach could be interpolating once on the entire grid and then
+        # selecting subsets of points corresponding to each structure
+        new_structures = []
+        for s_ind, s in enumerate(structures):
+            med = s.medium
+            if isinstance(med, AbstractPerturbationMedium):
+                # get structure's bounding box
+                s_bounds = s.geometry.bounds
+
+                bounds = [
+                    np.max([sim_bounds[0], s_bounds[0]], axis=0),
+                    np.min([sim_bounds[1], s_bounds[1]], axis=0),
+                ]
+
+                # for each structure select a minimal subset of data that covers it
+                t_cover, t_sub = self._sel_data_inside_bounds(temperature, bounds)
+                e_cover, e_sub = self._sel_data_inside_bounds(electron_density, bounds)
+                h_cover, h_sub = self._sel_data_inside_bounds(hole_density, bounds)
+
+                # check provided data fully cover structure
+                if not np.all([t_cover, e_cover, h_cover]):
+                    log.warning(
+                        "Provided temperature, electron density, and/or hole density data does not "
+                        f"fully cover structure {s_ind}."
+                    )
+
+                new_medium = med.apply_perturbations(t_sub, e_sub, h_sub)
+                new_s = s.updated_copy(medium=new_medium)
+                new_structures.append(new_s)
+            else:
+                new_structures.append(s)
+
+        sim_dict["structures"] = new_structures
+
+        med = self.medium
+        if isinstance(med, AbstractPerturbationMedium):
+
+            # get simulation's bounding box
+            bounds = sim_bounds
+
+            # for each structure select a minimal subset of data that covers it
+            t_cover, t_sub = self._sel_data_inside_bounds(temperature, bounds)
+            e_cover, e_sub = self._sel_data_inside_bounds(electron_density, bounds)
+            h_cover, h_sub = self._sel_data_inside_bounds(hole_density, bounds)
+
+            # check provided data fully cover simulation
+            if not np.all([t_cover, e_cover, h_cover]):
+                log.warning(
+                    "Provided temperature, electron density, and/or hole density data does not "
+                    "fully cover simulation domain."
+                )
+
+            sim_dict["medium"] = med.apply_perturbations(t_sub, e_sub, h_sub)
+
+        return Simulation.parse_obj(sim_dict)

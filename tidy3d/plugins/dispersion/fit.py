@@ -333,6 +333,7 @@ class DispersionFitter(Tidy3dBaseModel):
     def _fit_single(
         self,
         num_poles: int = 3,
+        guess = None,
     ) -> Tuple[PoleResidue, float]:
         """Perform a single fit to the data and return optimization result.
 
@@ -400,6 +401,9 @@ class DispersionFitter(Tidy3dBaseModel):
         # set initial guess
         num_coeffs = num_poles * 4
         coeffs0 = 2 * (np.random.random(num_coeffs) - 0.5)
+
+        if guess is not None:
+            coeffs0 = guess
 
         # set bounds
         bounds_upper = np.zeros(num_coeffs, dtype=float)
