@@ -12,7 +12,7 @@ from pydantic.fields import ModelField
 
 # import yaml
 import numpy as np
-# import h5py
+import h5py
 
 # import xarray as xr
 
