@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Configuration option `config.log_suppression` can be used to control the suppression of log messages.
+- `SimulationData.to_zbf` and `ElectromagneticFieldData.to_zbf` export fields from 2D monitors to a Zemax Beam File (zbf).
 
 ## [2.3.1] - 2023-7-14
 

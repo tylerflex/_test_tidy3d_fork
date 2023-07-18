@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from abc import ABC
 from typing import Union, Tuple, Callable, Dict, List, Any
+import struct
 import warnings
 
 import xarray as xr
@@ -186,24 +187,32 @@ class ElectromagneticFieldData(AbstractFieldData, ElectromagneticFieldDataset, A
         }
 
     @property
-    def _tangential_dims(self) -> List[str]:
-        """For a 2D monitor data, return the names of the tangential dimensions. Raise if cannot
-        confirm that the associated monitor is 2D."""
+    def _normal_and_tangential_dims(self) -> Tuple[str, List[str]]:
+        """For a 2D monitor data, return the names of the normal dimension and a list with the names
+        of the tangential dimensions. Raise if cannot confirm that the associated monitor is 2D."""
         if len(self.monitor.zero_dims) != 1:
             raise DataError("Data must be 2D to get tangential dimensions.")
         tangential_dims = ["x", "y", "z"]
-        tangential_dims.pop(self.monitor.zero_dims[0])
+        normal_dim = tangential_dims.pop(self.monitor.zero_dims[0])
+        return normal_dim, tangential_dims
 
-        return tangential_dims
+    @property
+    def _tangential_dims(self) -> List[str]:
+        """For a 2D monitor data, return the names of the tangential dimensions. Raise if cannot
+        confirm that the associated monitor is 2D."""
+        return self._normal_and_tangential_dims[1]
+
+    @property
+    def _normal_dim(self) -> List[str]:
+        """For a 2D monitor data, return the name of the normal dimension. Raise if cannot confirm
+        that the associated monitor is 2D."""
+        return self._normal_and_tangential_dims[0]
 
     @property
     def _in_plane(self) -> Dict[str, DataArray]:
         """Dictionary of field components with finite grid correction factors applied and symmetry
         expanded."""
-        if len(self.monitor.zero_dims) != 1:
-            raise DataError("Data must be 2D to apply grid corrections.")
-
-        normal_dim = "xyz"[self.monitor.zero_dims[0]]
+        normal_dim = self._normal_dim
         fields = {}
         for field_name, field in self.grid_corrected_copy.field_components.items():
             fields[field_name] = field.squeeze(dim=normal_dim, drop=True)
@@ -276,10 +285,8 @@ class ElectromagneticFieldData(AbstractFieldData, ElectromagneticFieldDataset, A
         field components is missing.
         """
         # Tangential field components
-        tan_dims = self._tangential_dims
+        normal_dim, tan_dims = self._normal_and_tangential_dims
         components = [fname + dim for fname in "EH" for dim in tan_dims]
-
-        normal_dim = "xyz"[self.monitor.size.index(0)]
 
         tan_fields = {}
         for component in components:
@@ -351,7 +358,7 @@ class ElectromagneticFieldData(AbstractFieldData, ElectromagneticFieldDataset, A
         if len(self.monitor.zero_dims) != 1:
             return field_data
 
-        normal_dim = "xyz"[self.monitor.zero_dims[0]]
+        normal_dim = self._normal_dim
         update = {"grid_primal_correction": 1.0, "grid_dual_correction": 1.0}
         for field_name, field in field_data.field_components.items():
             eig_val = self.symmetry_eigenvalues[field_name](normal_dim)
@@ -367,7 +374,7 @@ class ElectromagneticFieldData(AbstractFieldData, ElectromagneticFieldDataset, A
         fields = self._centered_fields
         components = ("Ex", "Ey", "Ez")
         if any(cmp not in fields for cmp in components):
-            raise KeyError("Can't compute intensity, all E field components must be present.")
+            raise DataError("Can't compute intensity, all E field components must be present.")
         return sum(fields[cmp].abs ** 2 for cmp in components)
 
     @property
@@ -616,6 +623,95 @@ class ElectromagneticFieldData(AbstractFieldData, ElectromagneticFieldDataset, A
             else:
                 new_data[comp] = np.conj(field)
         return self.copy(update=new_data)
+
+    def to_zbf(
+        self, fname: str, refractive_index: float, freq: float = None, mode_index: int = 0
+    ) -> None:
+        """For a 2D monitor, export the fields to a Zemax Beam File (zbf).
+
+        Parameters
+        ----------
+        fname : str
+            Full path to the .zbf file to be written.
+        refractive_index : float
+            Refractive index of the medium surrounding the monitor.
+        freq : float
+            Field frequency selection.
+        mode_index : int
+            Mode index selection.
+        """
+        # Mode area calculation ensures all E components are present
+        mode_area = self.mode_area
+        dim1, dim2 = self._tangential_dims
+
+        # Using file-local coordinates x, y for the tangential components
+        e_x = self._tangential_fields["E" + dim1]
+        e_y = self._tangential_fields["E" + dim2]
+        x = e_x.coords[dim1].values
+        y = e_x.coords[dim2].values
+
+        if freq is None:
+            freq = e_x.coords["f"].values[e_x.coords["f"].size // 2]  # central frequency
+
+        mode_area = mode_area.sel(f=freq, drop=True)
+        e_x = e_x.sel(f=freq, drop=True)
+        e_y = e_y.sel(f=freq, drop=True)
+
+        if "mode_index" in e_x.coords:
+            mode_area = mode_area.isel(mode_index=mode_index, drop=True)
+            e_x = e_x.isel(mode_index=mode_index, drop=True)
+            e_y = e_y.isel(mode_index=mode_index, drop=True)
+
+        version = 1
+        polarized = 1
+        units = 0  # "mm": 0, "cm": 1, "in": 2, "m": 3
+        lda = C_0 / freq * 1e-3
+
+        # Pilot (reference) beam waist: use the mode area to approximate the expected value
+        w_x = (mode_area.item() / np.pi) ** 0.5 * 1e-3
+        w_y = w_x
+
+        # Pilot beam Rayleigh distance (ignored on input)
+        r_x = 0
+        r_y = 0
+
+        # Pilot beam z position w.r.t. the waist
+        z_x = 0 * 1e-3
+        z_y = 0 * 1e-3
+
+        # Number of samples: n_x = 2 ** a, a >= 5 and a <= 13 (32-bit), or a <= 14 (64-bit)
+        n_x = 2 ** min(13, max(5, int(np.log2(x.size) + 1)))
+        n_y = 2 ** min(13, max(5, int(np.log2(y.size) + 1)))
+
+        # Interpolating coordinates
+        x = np.linspace(x.min(), x.max(), n_x)
+        y = np.linspace(y.min(), y.max(), n_y)
+
+        # Interpolate fields
+        coords = {dim1: x, dim2: y}
+        e_x = e_x.interp(coords, assume_sorted=True)
+        e_y = e_y.interp(coords, assume_sorted=True)
+
+        # Sampling distance
+        d_x = np.mean(np.diff(x)) * 1e-3
+        d_y = np.mean(np.diff(y)) * 1e-3
+
+        # Receiver and system efficiencies
+        rec_efficiency = 0  # zero if fiber coupling is not computed
+        sys_efficiency = 0  # zero if fiber coupling is not computed
+
+        with open(fname, "wb") as fout:
+            fout.write(struct.pack("=5I", version, n_x, n_y, polarized, units))
+            fout.write(struct.pack("=4I", 0, 0, 0, 0))  # unused values
+            fout.write(struct.pack("=8d", d_x, d_y, z_x, r_x, w_x, z_y, r_y, w_y))
+            fout.write(struct.pack("=4d", lda, refractive_index, rec_efficiency, sys_efficiency))
+            fout.write(struct.pack("=8d", 0, 0, 0, 0, 0, 0, 0, 0))  # unused values
+            for e in (e_x, e_y):
+                for j in range(n_y):
+                    e_complex = e[{dim2: j}].values
+                    # Interweave real and imaginary parts
+                    e_values = np.ravel(np.column_stack((e_complex.real, e_complex.imag)))
+                    fout.write(struct.pack(f"={2 * n_x}d", *e_values))
 
 
 class FieldData(FieldDataset, ElectromagneticFieldData):
