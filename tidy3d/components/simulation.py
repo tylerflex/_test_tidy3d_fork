@@ -15,7 +15,7 @@ from .base import cached_property
 from .validators import assert_unique_names, assert_objects_in_sim_bounds
 from .validators import validate_mode_objects_symmetry
 from .geometry import Box, TriangleMesh, Geometry, PolySlab, Cylinder
-from .types import Ax, Shapely, FreqBound, Axis, annotate_type, Symmetry, Bound, TYPE_TAG_STR
+from .types import Ax, Shapely, FreqBound, Axis, annotate_type, Symmetry, TYPE_TAG_STR
 from .grid.grid import Coords1D, Grid, Coords
 from .grid.grid_spec import GridSpec, UniformGrid, AutoGrid
 from .medium import Medium, MediumType, AbstractMedium, PECMedium
@@ -2821,65 +2821,16 @@ class Simulation(Box):  # pylint:disable=too-many-public-methods
                 return True
         return False
 
-    @staticmethod
-    def _sel_data_inside_bounds(data: SpatialDataArray, bounds: Bound) -> Tuple[bool, SpatialDataArray]:
-
-        if data is None:
-            return True, None
-
-        is_full_cover = True
-
-        inds_list = []
-
-        for coord, smin, smax in zip(
-            data.coords.values(),
-            bounds[0],
-            bounds[1]
-        ):
-
-            length = len(coord)
-
-            # if data does not cover structure at all take the closest index
-            if smax < coord[0]:  # structure is completely on the left side
-
-                # take 2 if possible, so that linear iterpolation is possible
-                comp_inds = np.arange(0, max(2, length))
-                is_full_cover = False
-
-            elif smin > coord[-1]:  # structure is completely on the right side
-
-                # take 2 if possible, so that linear iterpolation is possible
-                comp_inds = np.arange(min(0, length - 2), length)
-                is_full_cover = False
-
-            else:
-                if smin < coord[0]:
-                    is_full_cover = False
-                    ind_min = 0
-                else:
-                    ind_min = max(0, (coord >= smin).argmax().data - 1)
-
-                if smax > coord[-1]:
-                    is_full_cover = False
-                    ind_max = length - 1
-                else:
-                    ind_max = (coord >= smax).argmax().data
-
-                comp_inds = np.arange(ind_min, ind_max + 1)
-
-            inds_list.append(comp_inds)
-
-        return is_full_cover, data.isel(x=inds_list[0], y=inds_list[1], z=inds_list[2])
-
-    def apply_perturbations(
+    def perturbed_mediums_copy(
         self,
         temperature: SpatialDataArray = None,
         electron_density: SpatialDataArray = None,
         hole_density: SpatialDataArray = None,
     ) -> Simulation:
-        """Apply heat and/or charge data to perturbation mediums contained in the Simulation
-        replacing them by corresponding spatially dependent custom mediums. Any of temperature,
-        electron_density, and hole_density can be 'None'. All provided fields must have identical
+        """Return a copy of the simulation with heat and/or charge data applied to all mediums
+        that have perturbation models specified. That is, such mediums will be replaced with
+        spatially dependent custom mediums that reflect perturbation effects. Any of temperature,
+        electron_density, and hole_density can be ``None``. All provided fields must have identical
         coords.
 
         Parameters
@@ -2900,18 +2851,21 @@ class Simulation(Box):  # pylint:disable=too-many-public-methods
         sim_dict = self.dict()
         structures = self.structures
         sim_bounds = self.bounds_pml
+        array_dict = {
+            "temperature": temperature,
+            "electron_density": electron_density,
+            "hole_density": hole_density,
+        }
 
-        # For each structure that contains HeatSpecSolid sample temperature field and obtain
-        # perturbed medium as a CustomMedium. Pack it into a regular Structure.
-        # Currently we perform separate interpolation inside the bounding box of each HeatStructure,
-        # a more efficient approach could be interpolating once on the entire grid and then
-        # selecting subsets of points corresponding to each structure
+        # For each structure made of mediums with perturbation models, convert those mediums into
+        # spatially dependent mediums by selecting minimal amount of heat and charge data points
+        # covering the structure, and create a new structure containing the resulting custom medium
         new_structures = []
-        for s_ind, s in enumerate(structures):
-            med = s.medium
+        for s_ind, structure in enumerate(structures):
+            med = structure.medium
             if isinstance(med, AbstractPerturbationMedium):
                 # get structure's bounding box
-                s_bounds = s.geometry.bounds
+                s_bounds = structure.geometry.bounds
 
                 bounds = [
                     np.max([sim_bounds[0], s_bounds[0]], axis=0),
@@ -2919,25 +2873,27 @@ class Simulation(Box):  # pylint:disable=too-many-public-methods
                 ]
 
                 # for each structure select a minimal subset of data that covers it
-                t_cover, t_sub = self._sel_data_inside_bounds(temperature, bounds)
-                e_cover, e_sub = self._sel_data_inside_bounds(electron_density, bounds)
-                h_cover, h_sub = self._sel_data_inside_bounds(hole_density, bounds)
+                restricted_arrays = {}
 
-                # check provided data fully cover structure
-                if not np.all([t_cover, e_cover, h_cover]):
-                    log.warning(
-                        "Provided temperature, electron density, and/or hole density data does not "
-                        f"fully cover structure {s_ind}."
-                    )
+                for name, array in array_dict.items():
+                    if array is not None:
+                        restricted_arrays[name] = array.sel_inside(bounds)
 
-                new_medium = med.apply_perturbations(t_sub, e_sub, h_sub)
-                new_s = s.updated_copy(medium=new_medium)
-                new_structures.append(new_s)
+                        # check provided data fully cover structure
+                        if not array.does_cover(bounds):
+                            log.warning(
+                                f"Provided '{name}' does not fully cover structures[{s_ind}]."
+                            )
+
+                new_medium = med.perturbed_copy(**restricted_arrays)
+                new_structure = structure.updated_copy(medium=new_medium)
+                new_structures.append(new_structure)
             else:
-                new_structures.append(s)
+                new_structures.append(structure)
 
         sim_dict["structures"] = new_structures
 
+        # do the same for background medium if it a medium with perturbation models.
         med = self.medium
         if isinstance(med, AbstractPerturbationMedium):
 
@@ -2945,17 +2901,16 @@ class Simulation(Box):  # pylint:disable=too-many-public-methods
             bounds = sim_bounds
 
             # for each structure select a minimal subset of data that covers it
-            t_cover, t_sub = self._sel_data_inside_bounds(temperature, bounds)
-            e_cover, e_sub = self._sel_data_inside_bounds(electron_density, bounds)
-            h_cover, h_sub = self._sel_data_inside_bounds(hole_density, bounds)
+            restricted_arrays = {}
 
-            # check provided data fully cover simulation
-            if not np.all([t_cover, e_cover, h_cover]):
-                log.warning(
-                    "Provided temperature, electron density, and/or hole density data does not "
-                    "fully cover simulation domain."
-                )
+            for name, array in array_dict.items():
+                if array is not None:
+                    restricted_arrays[name] = array.sel_inside(bounds)
 
-            sim_dict["medium"] = med.apply_perturbations(t_sub, e_sub, h_sub)
+                    # check provided data fully cover simulation
+                    if not array.does_cover(bounds):
+                        log.warning(f"Provided '{name}' does not fully cover simulation domain.")
+
+            sim_dict["medium"] = med.perturbed_copy(**restricted_arrays)
 
         return Simulation.parse_obj(sim_dict)

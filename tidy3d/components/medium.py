@@ -19,7 +19,7 @@ from .data.dataset import PermittivityDataset
 from .data.data_array import SpatialDataArray, ScalarFieldDataArray, DATA_ARRAY_MAP
 from .viz import add_ax_if_none
 from .geometry import Geometry
-from .validators import validate_name_str
+from .validators import validate_name_str, validate_parameter_perturbation
 from ..constants import C_0, pec_val, EPSILON_0, LARGE_NUMBER, fp_eps
 from ..constants import HERTZ, CONDUCTIVITY, PERMITTIVITY, RADPERSEC, MICROMETER, SECOND
 from ..exceptions import ValidationError, SetupError
@@ -2935,16 +2935,16 @@ class AbstractPerturbationMedium(ABC, Tidy3dBaseModel):
     """Abstract class for medium perturbation."""
 
     @abstractmethod
-    def apply_perturbations(
+    def perturbed_copy(
         self,
         temperature: SpatialDataArray = None,
         electron_density: SpatialDataArray = None,
         hole_density: SpatialDataArray = None,
     ) -> Union[AbstractMedium, AbstractCustomMedium]:
         """Sample perturbations on provided heat and/or charge data and create a custom medium.
-        Any of temperature, electron_density, and hole_density can be 'None'. If all passed
-        arguments are 'None' then a non-custom medium is returned. All provided fields must have
-        identical coords.
+        Any of ``temperature``, ``electron_density``, and ``hole_density`` can be ``None``.
+        If all passed arguments are ``None`` then a non-custom medium is returned.
+        All provided fields must have identical coords.
 
         Parameters
         ----------
@@ -2991,39 +2991,22 @@ class PerturbationMedium(Medium, AbstractPerturbationMedium):
         units=CONDUCTIVITY,
     )
 
-    @pd.validator("permittivity_perturbation", always=True, allow_reuse=True)
-    def warn_permittivity_range(cls, val, values):
-        """Warn if permittivity can become less than one due to heat/charge perturbations."""
+    _permittivity_perturbation_validator = validate_parameter_perturbation(
+        "permittivity_perturbation",
+        "permittivity",
+        allowed_real_range=[(1.0, None)],
+        allowed_imag_range=[None],
+        allowed_complex=False,
+    )
+    _conductivity_perturbation_validator = validate_parameter_perturbation(
+        "conductivity_perturbation",
+        "conductivity",
+        allowed_real_range=[(0.0, None)],
+        allowed_imag_range=[None],
+        allowed_complex=False,
+    )
 
-        if val:
-            if val.is_complex:
-                log.warning("Permittivity perturbation cannot be complex.")
-
-            min_permittivity, _ = val.perturbation_range
-            min_permittivity += values["permittivity"]
-
-            if min_permittivity < 1:
-                log.warning("Permittivity can become less than one for a PerturbationMedium material.")
-
-        return val
-
-    @pd.validator("conductivity_perturbation", always=True, allow_reuse=True)
-    def warn_conductivity_range(cls, val, values):
-        """Warn if conductivity can become less than zero due to heat/charge perturbations."""
-
-        if val:
-            if val.is_complex:
-                log.warning("Conductivity perturbation cannot be complex.")
-
-            min_conductivity, _ = val.perturbation_range
-            min_conductivity += values["conductivity"]
-
-            if min_conductivity < 0:
-                log.warning("Conductivity can potentially become less than zero for a PerturbationMedium material.")
-
-        return val
-
-    def apply_perturbations(
+    def perturbed_copy(
         self,
         temperature: SpatialDataArray = None,
         electron_density: SpatialDataArray = None,
@@ -3049,13 +3032,14 @@ class PerturbationMedium(Medium, AbstractPerturbationMedium):
             Medium specification after application of heat and/or charge data.
         """
 
-        if all([x is None for x in [temperature, electron_density, hole_density]]):
+        if all(x is None for x in [temperature, electron_density, hole_density]):
             return Medium(
                 permittivity=self.permittivity,
                 conductivity=self.conductivity,
                 name=self.name,
             )
 
+        # pylint:disable=protected-access
         permittivity_field = self.permittivity + ParameterPerturbation._zeros_like(
             temperature, electron_density, hole_density
         )
@@ -3107,61 +3091,35 @@ class PerturbationPoleResidue(PoleResidue, AbstractPerturbationMedium):
     eps_inf_perturbation: Optional[ParameterPerturbation] = pd.Field(
         None,
         title="Perturbation of Epsilon at Infinity",
-        description="Perturbations to relative permittivity at infinite frequency (:math:`\\epsilon_\\infty`).",
+        description="Perturbations to relative permittivity at infinite frequency "
+        "(:math:`\\epsilon_\\infty`).",
         units=PERMITTIVITY,
     )
 
-    poles_perturbation: Tuple[Tuple[ParameterPerturbation, ParameterPerturbation], ...] = pd.Field(
+    poles_perturbation: Tuple[
+        Tuple[Optional[ParameterPerturbation], Optional[ParameterPerturbation]], ...
+    ] = pd.Field(
         (),
         title="Perturbations of Poles",
         description="Perturbations to poles of the model.",
         units=(RADPERSEC, RADPERSEC),
     )
 
-    @pd.validator("eps_inf_perturbation", always=True, allow_reuse=True)
-    def warn_eps_inf_range(cls, val, values):
-        """Check that eps_inf does not go below zero."""
+    _eps_inf_perturbation_validator = validate_parameter_perturbation(
+        "eps_inf_perturbation",
+        "eps_inf",
+        allowed_real_range=[(0.0, None)],
+        allowed_imag_range=[None],
+        allowed_complex=False,
+    )
+    _poles_perturbation_validator = validate_parameter_perturbation(
+        "poles_perturbation",
+        "poles",
+        allowed_real_range=[(None, 0.0), (None, None)],
+        allowed_imag_range=[None, None],
+    )
 
-        if val:
-            if val.is_complex:
-                log.warning("eps_inf perturbation cannot be complex.")
-
-            min_eps_inf, _ = val.perturbation_range
-            min_eps_inf += values["eps_inf"]
-
-            if min_eps_inf < 0:
-                log.warning(
-                    "eps_inf can become less than zero for a PerturbationPoleResidue material "
-                    "in the provided heat and charge ranges."
-                )
-
-        return val
-
-    @pd.validator("poles_perturbation", always=True, allow_reuse=True)
-    def check_number_pole_perturbations(cls, val, values):
-
-        if val is not None and np.shape(val) != np.shape(values["poles"]):
-            raise ValidationError("`poles_perturbation` must have the same shape as `poles`.")
-
-        return val
-
-#    @pd.validator("poles_perturbation", always=True)
-#    def warn_causality_violation(cls, val, values):
-#        """Check that perturbations do not violate causality."""
-#        if val:
-#            for (perturb, _), (a, _) in zip(val, values["poles"]):
-#                if perturb:
-#                    # sorted by real part, so it works here
-#                    _, a_max = perturb.perturbation_range
-#                    a_max += a
-#                    if np.any(np.real(a_max) > 0):
-#                        log.warning(
-#                            "'Re(a_i)' can become positive (unstable) for a PerturbationPoleResidue"
-#                            " material in the provided heat and charge ranges."
-#                        )
-#        return val
-
-    def apply_perturbations(
+    def perturbed_copy(
         self,
         temperature: SpatialDataArray = None,
         electron_density: SpatialDataArray = None,
@@ -3187,16 +3145,15 @@ class PerturbationPoleResidue(PoleResidue, AbstractPerturbationMedium):
             Medium specification after application of heat and/or charge data.
         """
 
-        if all([x is None for x in [temperature, electron_density, hole_density]]):
+        if all(x is None for x in [temperature, electron_density, hole_density]):
             return PoleResidue(
                 eps_inf=self.eps_inf,
                 poles=self.poles,
                 name=self.name,
             )
 
-        zeros = ParameterPerturbation._zeros_like(
-            temperature, electron_density, hole_density
-        )
+        # pylint:disable=protected-access
+        zeros = ParameterPerturbation._zeros_like(temperature, electron_density, hole_density)
 
         # sample eps_inf
         eps_inf_field = self.eps_inf + zeros
@@ -3210,13 +3167,9 @@ class PerturbationPoleResidue(PoleResidue, AbstractPerturbationMedium):
         poles_field = [[a + zeros, c + zeros] for a, c in self.poles]
         for (a_perturb, c_perturb), (a_field, c_field) in zip(self.poles_perturbation, poles_field):
             if a_perturb is not None:
-                a_field += a_perturb.apply_data(
-                    temperature, electron_density, hole_density
-                )
+                a_field += a_perturb.apply_data(temperature, electron_density, hole_density)
             if c_perturb is not None:
-                c_field += c_perturb.apply_data(
-                    temperature, electron_density, hole_density
-                )
+                c_field += c_perturb.apply_data(temperature, electron_density, hole_density)
 
         return CustomPoleResidue(
             eps_inf=eps_inf_field,
@@ -3245,7 +3198,7 @@ MediumType3D = Union[
     CustomDrude,
     CustomAnisotropicMedium,
     PerturbationMedium,
-    PerturbationPoleResidue
+    PerturbationPoleResidue,
 ]
 
 

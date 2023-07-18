@@ -410,3 +410,63 @@ def test_fully_anisotropic_media():
 
     assert all(np.isin(np.round(perm_d), np.round(np.diag(perm_diag))))
     assert all(np.isin(np.round(cond_d), np.round(np.diag(cond_diag))))
+
+
+def test_perturbation_medium():
+
+    # Non-dispersive
+    pp_real = td.ParameterPerturbation(
+        heat=td.LinearHeatPerturbation(
+            coeff=-0.01,
+            temperature_ref=300,
+            temperature_range=(200, 500),
+        ),
+    )
+
+    pp_complex = td.ParameterPerturbation(
+        heat=td.LinearHeatPerturbation(
+            coeff=0.01j,
+            temperature_ref=300,
+            temperature_range=(200, 500),
+        ),
+        charge=td.LinearChargePerturbation(
+            electron_coeff=-1e-21,
+            electron_ref=0,
+            electron_range=(0, 1e20),
+            hole_coeff=-2e-21,
+            hole_ref=0,
+            hole_range=(0, 0.5e20),
+        ),
+    )
+
+    coords = dict(x=[1, 2], y=[3, 4], z=[5, 6])
+    temperature = td.SpatialDataArray(300 * np.ones((2, 2, 2)), coords=coords)
+    electron_density = td.SpatialDataArray(1e18 * np.ones((2, 2, 2)), coords=coords)
+    hole_density = td.SpatialDataArray(2e18 * np.ones((2, 2, 2)), coords=coords)
+
+    pmed = td.PerturbationMedium(permittivity=3, permittivity_perturbation=pp_real)
+
+    _ = pmed.perturbed_copy()
+    _ = pmed.perturbed_copy(temperature, electron_density)
+    _ = pmed.perturbed_copy(temperature, electron_density, hole_density)
+
+    # complex perturbation
+    with pytest.raises(pydantic.ValidationError):
+        pmed = td.PerturbationMedium(permittivity=3, permittivity_perturbation=pp_complex)
+
+    # Dispersive
+    pmed = td.PerturbationPoleResidue(
+        poles=[(1j, 3), (2j, 4)],
+        poles_perturbation=[(None, pp_real), (pp_complex, None)],
+    )
+
+    _ = pmed.perturbed_copy()
+    _ = pmed.perturbed_copy(temperature, None, hole_density)
+    _ = pmed.perturbed_copy(temperature, electron_density, hole_density)
+
+    # mismatch between base parameter and perturbations
+    with pytest.raises(pydantic.ValidationError):
+        pmed = td.PerturbationPoleResidue(
+            poles=[(1j, 3), (2j, 4)],
+            poles_perturbation=[(None, pp_real)],
+        )

@@ -9,6 +9,7 @@ import h5py
 
 from ...constants import HERTZ, SECOND, MICROMETER, RADIAN
 from ...exceptions import DataError, FileError
+from ..types import Bound
 
 # maps the dimension names to their attributes
 DIM_ATTRS = {
@@ -243,6 +244,76 @@ class SpatialDataArray(DataArray):
     __slots__ = ()
     _dims = ("x", "y", "z")
     _data_attrs = {"long_name": "field value"}
+
+    def sel_inside(self, bounds: Bound) -> SpatialDataArray:
+        """Return a new SpatialDataArray that contains the minimal amount data necessary to cover
+        a spatial region defined by ``bounds``.
+
+
+        Parameters
+        ----------
+        bounds : Tuple[float, float, float], Tuple[float, float float]
+            Min and max bounds packaged as ``(minx, miny, minz), (maxx, maxy, maxz)``.
+
+        Returns
+        -------
+        SpatialDataArray
+            Extracted spatial data array.
+        """
+
+        inds_list = []
+
+        for coord, smin, smax in zip(self.coords.values(), bounds[0], bounds[1]):
+
+            length = len(coord)
+
+            # if data does not cover structure at all take the closest index
+            if smax < coord[0]:  # structure is completely on the left side
+
+                # take 2 if possible, so that linear iterpolation is possible
+                comp_inds = np.arange(0, max(2, length))
+
+            elif smin > coord[-1]:  # structure is completely on the right side
+
+                # take 2 if possible, so that linear iterpolation is possible
+                comp_inds = np.arange(min(0, length - 2), length)
+
+            else:
+                if smin < coord[0]:
+                    ind_min = 0
+                else:
+                    ind_min = max(0, (coord >= smin).argmax().data - 1)
+
+                if smax > coord[-1]:
+                    ind_max = length - 1
+                else:
+                    ind_max = (coord >= smax).argmax().data
+
+                comp_inds = np.arange(ind_min, ind_max + 1)
+
+            inds_list.append(comp_inds)
+
+        return self.isel(x=inds_list[0], y=inds_list[1], z=inds_list[2])
+
+    def does_cover(self, bounds: Bound) -> bool:
+        """Check whether data fully covers specified by ``bounds`` spatial region.
+
+
+        Parameters
+        ----------
+        bounds : Tuple[float, float, float], Tuple[float, float float]
+            Min and max bounds packaged as ``(minx, miny, minz), (maxx, maxy, maxz)``.
+
+        Returns
+        -------
+        bool
+            Full cover check outcome.
+        """
+
+        return all(
+            coord[0] <= smin and coord[-1] >= smax
+            for coord, smin, smax in zip(self.coords.values(), bounds[0], bounds[1])
+        )
 
 
 class ScalarFieldDataArray(DataArray):
