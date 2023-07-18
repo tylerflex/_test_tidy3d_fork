@@ -4,7 +4,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Union, Dict, Callable, Any
 
-# import xarray as xr
+import xarray as xr
 import numpy as np
 import pydantic as pd
 
@@ -80,6 +80,7 @@ class AbstractFieldDataset(Dataset, ABC):
 
         # loop through field components
         for field_name, field_data in self.field_components.items():
+
             # loop through x, y, z dimensions and raise an error if only one element along dim
             for coord_name, coords_supplied in supplied_coord_map.items():
                 coord_data = np.array(field_data.coords[coord_name])

@@ -2,7 +2,7 @@
 from __future__ import annotations
 from typing import Dict, List
 
-# import xarray as xr
+import xarray as xr
 import numpy as np
 
 # import dask
@@ -36,7 +36,7 @@ DIM_ATTRS = {
 DATA_ARRAY_VALUE_NAME = "__xarray_dataarray_variable__"
 
 
-class DataArray:  # xr.DataArray):
+class DataArray(xr.DataArray):
     """Subclass of ``xr.DataArray`` that requires _dims to match the keys of the coords."""
 
     # Always set __slots__ = () to avoid xarray warnings
