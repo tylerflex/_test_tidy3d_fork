@@ -242,11 +242,6 @@ class ModeSolverTask(ResourceLifecycle, Submittable, extra=pydantic.Extra.allow)
         mode_solver = task.get_modesolver(to_file, sim_file, verbose, progress_callback)
         return task.copy(update={"mode_solver": mode_solver})
 
-    @property
-    def mode_solver_path(self):
-        """Return the mode solver path on the server for this task."""
-        return f"mode_solver/{self.solver_id}/"
-
     def get_info(self) -> ModeSolverTask:
         """Get the current state of this task on the server.
 
@@ -365,8 +360,8 @@ class ModeSolverTask(ResourceLifecycle, Submittable, extra=pydantic.Extra.allow)
         if self.file_type == "Hdf5":
             to_hdf5 = pathlib.Path(to_file).with_suffix(".hdf5")
             download_file(
-                self.task_id,
-                self.mode_solver_path + MODESOLVER_HDF5,
+                self.solver_id,
+                MODESOLVER_HDF5,
                 to_file=to_hdf5,
                 verbose=verbose,
                 progress_callback=progress_callback,
@@ -377,8 +372,8 @@ class ModeSolverTask(ResourceLifecycle, Submittable, extra=pydantic.Extra.allow)
 
         else:
             download_file(
-                self.task_id,
-                self.mode_solver_path + MODESOLVER_JSON,
+                self.solver_id,
+                MODESOLVER_JSON,
                 to_file=to_file,
                 verbose=verbose,
                 progress_callback=progress_callback,
@@ -423,8 +418,8 @@ class ModeSolverTask(ResourceLifecycle, Submittable, extra=pydantic.Extra.allow)
             Mode solver data with the calculated results.
         """
         download_file(
-            self.task_id,
-            self.mode_solver_path + MODESOLVER_RESULT,
+            self.solver_id,
+            MODESOLVER_RESULT,
             to_file=to_file,
             verbose=verbose,
             progress_callback=progress_callback,
@@ -463,8 +458,8 @@ class ModeSolverTask(ResourceLifecycle, Submittable, extra=pydantic.Extra.allow)
             Path to saved file.
         """
         return download_file(
-            self.task_id,
-            self.mode_solver_path + MODESOLVER_LOG,
+            self.solver_id,
+            MODESOLVER_LOG,
             to_file=to_file,
             verbose=verbose,
             progress_callback=progress_callback,
