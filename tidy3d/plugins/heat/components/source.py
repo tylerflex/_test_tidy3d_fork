@@ -25,7 +25,7 @@ class HeatSource(ABC, Tidy3dBaseModel):
         return plot_params_heat_source
 
 
-class HeatUniformSource(HeatSource):
+class UniformHeatSource(HeatSource):
     """Volumetric heat source.
 
     Example
@@ -40,7 +40,7 @@ class HeatUniformSource(HeatSource):
     )
 
 
-#class HeatCustomSource(HeatSource):
+#class CustomHeatSource(HeatSource):
 #    """Spatially dependent volumetric heat source.
 
 #    Example
@@ -61,6 +61,6 @@ class HeatUniformSource(HeatSource):
 
 
 HeatSourceType = Union[
-    HeatUniformSource,
+    UniformHeatSource,
 #    HeatCustomSource,
 ]

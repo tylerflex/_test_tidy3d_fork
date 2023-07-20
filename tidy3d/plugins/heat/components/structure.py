@@ -4,6 +4,7 @@ from __future__ import annotations
 import pydantic as pd
 from typing import Union
 
+from ....components.base import cached_property
 from ....components.structure import Structure
 
 from .medium import HeatMediumType
@@ -25,7 +26,12 @@ class HeatStructure(Structure):
         description="Heat source applied inside the strucutre.",
     )
 
+    @cached_property
     def to_structure(self) -> Structure:
-        return Structure(geometry=self.geometry, medium=self.medium.to_medium())
 
-HeatStructureType = Union[Structure, HeatStructure]
+        new_dict = self.dict(exclude={"source", "type"})
+        new_dict.update({"medium": self.medium.optic_spec})
+
+        return Structure.parse_obj(new_dict)
+
+HeatStructureType = Union[HeatStructure]

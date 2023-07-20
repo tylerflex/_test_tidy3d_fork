@@ -8,13 +8,13 @@ from ....components.base import Tidy3dBaseModel
 from ....constants import MICROMETER
 
 
-class HeatGridUniform(Tidy3dBaseModel):
+class UniformHeatGrid(Tidy3dBaseModel):
 
     """Uniform grid.
 
     Example
     -------
-    >>> heat_grid = HeatGridUniform(dl=0.1)
+    >>> heat_grid = UniformHeatGrid(dl=0.1)
     """
 
     dl: pd.PositiveFloat = pd.Field(
@@ -37,4 +37,4 @@ class HeatGridUniform(Tidy3dBaseModel):
     )
 
 
-HeatGridType = Union[HeatGridUniform]
+HeatGridType = Union[UniformHeatGrid]

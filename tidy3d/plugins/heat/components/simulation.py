@@ -10,8 +10,7 @@ import pydantic as pd
 from shapely.plotting import plot_line
 from shapely import LineString, MultiLineString, GeometryCollection
 
-from .source import HeatSourceType
-from .medium import HeatMediumType
+from .medium import HeatMediumType, FluidMedium
 from .structure import HeatStructureType, HeatStructure
 from .boundary import HeatBCTemperature, HeatBCFlux, HeatBCConvection
 from .boundary import HeatBCPlacementType
@@ -29,6 +28,7 @@ from ....components.simulation import Simulation
 from ....components.structure import Structure
 from ....components.geometry import Box
 from ....components.medium import MediumType3D, Medium
+from ....components.data.data_array import SpatialDataArray
 
 from ....exceptions import SetupError, ValidationError
 from ....constants import inf
@@ -46,8 +46,8 @@ class HeatSimulation(Simulation):
     >>> FIXME
     """
 
-    heat_medium: Union[MediumType3D, HeatMediumType] = pd.Field(
-        Medium(),
+    heat_medium: HeatMediumType = pd.Field(
+        FluidMedium(optic_spec=Medium()),
         title="Background Medium",
         description="Background medium of simulation, defaults to vacuum if not specified.",
     )
@@ -59,12 +59,6 @@ class HeatSimulation(Simulation):
         "Note: Structures defined later in this list override the "
         "simulation material properties in regions of spatial overlap.",
     )
-
-#    heat_sources: Tuple[HeatSourceType, ...] = pd.Field(
-#        (),
-#        title="Heat Sources",
-#        description="List of heat sources.",
-#    )
 
     heat_boundary_conditions: Tuple[HeatBCPlacementType, ...] = pd.Field(
         (),
@@ -84,20 +78,6 @@ class HeatSimulation(Simulation):
         "solved in the entire domain of the Tidy3D simulation."
     )
 
-#    @pd.validator("medium", always=True)
-#    def cannot_use_medium_field(cls, val, values):
-#        if val != Medium():
-#            raise ValidationError("Cannot use medium field, use heat_medium instead.")
-#        else:
-#            return val
-
-#    @pd.validator("structures", always=True)
-#    def cannot_use_structures_field(cls, val, values):
-#        if val != ():
-#            raise ValidationError("Cannot use structures field, use heat_structures instead.")
-#        else:
-#            return val
-
     @pd.root_validator(skip_on_failure=True)
     def initialize_medium_and_structures(cls, values):
 
@@ -107,23 +87,13 @@ class HeatSimulation(Simulation):
         if values.get("structures") != ():
             print("Warning: HeatSimulation.structures is being overwritten by HeatSimulation.heat_structures")
 
-        print("test1")
-        heat_med = values.get("heat_medium")
-        if isinstance(heat_med, HeatMediumType):
-            new_med = heat_med.to_medium()
-        else:
-            new_med = heat_med
+        heat_medium = values.get("heat_medium")
+        medium = heat_medium.optic_spec
 
-        print("test2")
         heat_structures = values.get("heat_structures")
-        new_structures = []
-        for s in heat_structures:
-            if isinstance(s, HeatStructure):
-                new_structures.append(s.to_structure())
-            else:
-                new_structures.append(s)
+        structures = [s.to_structure for s in heat_structures]
 
-        values.update({"medium": new_med, "structures": new_structures})
+        values.update({"medium": medium, "structures": structures})
         return values
 
     @pd.validator("heat_boundary_conditions", always=True)
@@ -167,30 +137,23 @@ class HeatSimulation(Simulation):
                 "type",
                 "heat_medium",
                 "heat_structures",
-#                "heat_sources",
                 "heat_boundary_conditions",
+                "heat_grid_spec",
                 "heat_domain",
             }
         )
 
-#        heat_med = self.heat_medium
-#        print("validator heat medium: ", heat_med)
-#        if isinstance(heat_med, HeatMediumType):
-#            new_med = heat_med.to_medium()
-#        else:
-#            new_med = heat_med
+        new_medium = self.heat_medium.optic_spec
+        new_structures = [s.to_structure for s in self.heat_structures]
 
-#        heat_structures = self.heat_structures
-#        print("validator heat_structures: ", heat_structures)
-#        new_structures = []
-#        for s in heat_structures:
-#            if isinstance(s, HeatStructure):
-#                new_structures.append(s.to_structure())
-#            else:
-#                new_structures.append(s)
-
-#        sim_dict.update({"medium": new_med, "structures": new_structures})
+        sim_dict.update({"medium": new_medium, "structures": new_structures})
         return Simulation.parse_obj(sim_dict)
+
+    def to_perturbed_mediums_simulation(self, temperature: SpatialDataArray) -> Simulation:
+        """Returns underlying :class:`.Simulation` object."""
+
+        optic_sim = self.to_simulation()
+        return optic_sim.perturbed_mediums_copy(temperature=temperature)
 
     @cached_property
     def heat_domain_structure(self) -> Structure:
@@ -348,7 +311,7 @@ class HeatSimulation(Simulation):
     # pylint:disable=too-many-locals
     @staticmethod
     def _construct_heat_boundaries(
-        structures: List[Structure],
+        structures: List[HeatStructure],
         plane: Box,
         boundary_conditions: List[HeatBCPlacementType],
     ) -> List[Tuple[HeatBCPlacementType, Shapely]]:

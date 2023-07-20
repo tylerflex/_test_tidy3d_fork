@@ -5,6 +5,6 @@ from typing import Union
 from ....components.data.data_array import ScalarFieldTimeDataArray, SpatialDataArray
 
 
-TemperatureFieldType = Union[ScalarFieldTimeDataArray, SpatialDataArray]
+TemperatureFieldType = Union[SpatialDataArray]
 
 # TODO: unstructured data?
