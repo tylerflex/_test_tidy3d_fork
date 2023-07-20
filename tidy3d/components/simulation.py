@@ -1414,7 +1414,7 @@ class Simulation(Box):  # pylint:disable=too-many-public-methods
         elif medium.time_modulated:
             # time modulated medium
             plot_params = plot_params.copy(
-                update={"facecolor": "gray", "edgecolor": "k", "linewidth": 1, "hatch": "x*"}
+                update={"facecolor": "red", "linewidth": 0, "hatch": "x*"}
             )
         elif isinstance(medium, Medium2D):
             # 2d material

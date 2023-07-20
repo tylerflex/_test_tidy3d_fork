@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from typing import Union, Tuple
+from math import isclose
 
 import pydantic as pd
 import numpy as np
@@ -33,6 +34,25 @@ class AbstractTimeModulation(ABC, Tidy3dBaseModel):
     @abstractmethod
     def range(self) -> Tuple[float, float]:
         """Estimated minimal and maximal perturbation to the relative permittivity."""
+
+    @cached_property
+    @abstractmethod
+    def negligible_modulation_speed(self) -> Tuple[float, float]:
+        """whether the modulation is slow enough to be regarded as zero."""
+
+    @cached_property
+    def negligible_modulation_amp(self) -> bool:
+        """whether the modulation is small enough to be regarded as zero."""
+        if isclose(self.range[0], 0) and isclose(self.range[1], 0):
+            return True
+        return False
+
+    @cached_property
+    def negligible_modulation(self) -> bool:
+        """whether the modulation is small or slow enough to be regarded as zero."""
+        if self.negligible_modulation_amp or self.negligible_modulation_speed:
+            return True
+        return False
 
     @staticmethod
     def _validate_isreal_dataarray(dataarray: SpatialDataArray) -> bool:
@@ -122,6 +142,13 @@ class ContinuousWaveModulation(AbstractTimeModulation):
         """Estimated minimal and maximal perturbation to the relative permittivity."""
         amplitude_max = max(self._amplitude_array.values.ravel())
         return -amplitude_max, amplitude_max
+
+    @cached_property
+    def negligible_modulation_speed(self) -> Tuple[float, float]:
+        """whether the modulation is slow enough to be regarded as zero."""
+        if isclose(self.freq, 0):
+            return True
+        return False
 
 
 # time modulation allowed in medium

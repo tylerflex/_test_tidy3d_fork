@@ -568,6 +568,8 @@ class Medium(AbstractMedium):
     @pd.validator("conductivity_time_modulation", always=True)
     def _passivity_modulation_validation(cls, val, values):
         """Assert passive medium if `allow_gain` is False."""
+        if val is None:
+            return val
         if not values.get("allow_gain") and values.get("conductivity") + val.range[0] < 0:
             raise ValidationError(
                 "For passive medium, the overall modulated 'conductivity' must be non-negative. "
@@ -590,11 +592,9 @@ class Medium(AbstractMedium):
     @cached_property
     def time_modulated(self):
         """Whether time modulation has been applied to the medium."""
-        if (
-            self.permittivity_time_modulation is not None
-            or self.conductivity_time_modulation is not None
-        ):
-            return True
+        for comp in [self.permittivity_time_modulation, self.conductivity_time_modulation]:
+            if comp is not None and not comp.negligible_modulation:
+                return True
         return False
 
     @cached_property
