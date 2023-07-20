@@ -548,6 +548,12 @@ class Medium(AbstractMedium):
         description="Time modulation of permittivity",
     )
 
+    conductivity_time_modulation: ContinuousWaveModulation = pd.Field(
+        None,
+        title="Time modulation of conductivity",
+        description="Time modulation of conductivity",
+    )
+
     @pd.validator("conductivity", always=True)
     def _passivity_validation(cls, val, values):
         """Assert passive medium if `allow_gain` is False."""
@@ -559,10 +565,35 @@ class Medium(AbstractMedium):
             )
         return val
 
+    @pd.validator("conductivity_time_modulation", always=True)
+    def _passivity_modulation_validation(cls, val, values):
+        """Assert passive medium if `allow_gain` is False."""
+        if not values.get("allow_gain") and values.get("conductivity") + val.range[0] < 0:
+            raise ValidationError(
+                "For passive medium, the overall modulated 'conductivity' must be non-negative. "
+                "To simulate gain medium, please set 'allow_gain=True'. "
+                "Caution: simulations with gain medium are unstable, and are likely to diverge."
+            )
+        return val
+
+    @pd.validator("conductivity_time_modulation", always=True)
+    def _same_modulation_frequency(cls, val, values):
+        """Assert same modulation frequency in permittivity and conductivity."""
+        permittiivty_modulation = values.get("permittivity_time_modulation")
+        if val is not None and permittiivty_modulation is not None:
+            if not isclose(val.freq, permittiivty_modulation.freq):
+                raise ValidationError(
+                    "'permittivity' and 'conductivity' should be modulated at the same frequency."
+                )
+        return val
+
     @cached_property
     def time_modulated(self):
         """Whether time modulation has been applied to the medium."""
-        if self.permittivity_time_modulation is not None:
+        if (
+            self.permittivity_time_modulation is not None
+            or self.conductivity_time_modulation is not None
+        ):
             return True
         return False
 
