@@ -16,6 +16,9 @@ from .components.medium import CustomSellmeier, FullyAnisotropicMedium
 from .components.medium import CustomLorentz, CustomDrude, CustomDebye, CustomAnisotropicMedium
 from .components.transformation import RotationAroundAxis
 
+# time modulation
+from .components.time_modulation import ContinuousWaveModulation
+
 # structures
 from .components.structure import Structure, MeshOverrideStructure
 

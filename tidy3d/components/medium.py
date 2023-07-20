@@ -25,6 +25,7 @@ from ..constants import HERTZ, CONDUCTIVITY, PERMITTIVITY, RADPERSEC, MICROMETER
 from ..exceptions import ValidationError, SetupError
 from ..log import log
 from .transformation import RotationType
+from .time_modulation import ContinuousWaveModulation
 
 
 # evaluate frequency as this number (Hz) if inf
@@ -180,6 +181,11 @@ class AbstractMedium(ABC, Tidy3dBaseModel):
         the FDTD with this medium is stable when the time step size that doesn't take
         material factor into account is multiplied by ``n_cfl``.
         """
+
+    @cached_property
+    def time_modulated(self):
+        """Whether time modulation has been applied to the medium."""
+        return False
 
     @add_ax_if_none
     def plot(self, freqs: float, ax: Ax = None) -> Ax:  # pylint: disable=invalid-name
@@ -536,6 +542,12 @@ class Medium(AbstractMedium):
         units=CONDUCTIVITY,
     )
 
+    permittivity_time_modulation: ContinuousWaveModulation = pd.Field(
+        None,
+        title="Time modulation of permittivity",
+        description="Time modulation of permittivity",
+    )
+
     @pd.validator("conductivity", always=True)
     def _passivity_validation(cls, val, values):
         """Assert passive medium if `allow_gain` is False."""
@@ -548,6 +560,13 @@ class Medium(AbstractMedium):
         return val
 
     @cached_property
+    def time_modulated(self):
+        """Whether time modulation has been applied to the medium."""
+        if self.permittivity_time_modulation is not None:
+            return True
+        return False
+
+    @cached_property
     def n_cfl(self):
         """This property computes the index of refraction related to CFL condition, so that
         the FDTD with this medium is stable when the time step size that doesn't take
@@ -555,6 +574,8 @@ class Medium(AbstractMedium):
 
         For dispersiveless medium, it equals ``sqrt(permittivity)``.
         """
+        if self.time_modulated:
+            return np.sqrt(self.permittivity + self.permittivity_time_modulation.range[0])
         return np.sqrt(self.permittivity)
 
     @ensure_freq_in_range
