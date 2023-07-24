@@ -7,6 +7,7 @@ from math import isclose
 import pydantic
 import numpy as np
 import xarray as xr
+
 # import matplotlib.pylab as plt
 # import matplotlib as mpl
 # from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -237,7 +238,7 @@ class Simulation(Box):  # pylint:disable=too-many-public-methods
         updater = Updater(sim_dict=values)
         return updater.update_to_current()
 
-    @pydantic.validator("grid_spec", always=True)
+    # @pydantic.validator("grid_spec", always=True)
     def _validate_auto_grid_wavelength(cls, val, values):
         """Check that wavelength can be defined if there is auto grid spec."""
         if val.wavelength is None and val.auto_grid_used:
@@ -451,7 +452,6 @@ class Simulation(Box):  # pylint:disable=too-many-public-methods
                 struct_bounds = list(struct_bound_min) + list(struct_bound_max)
 
                 for sim_val, struct_val in zip(sim_bounds, struct_bounds):
-
                     if isclose(sim_val, struct_val):
                         consolidated_logger.warning(
                             f"Structure at structures[{istruct}] has bounds that extend exactly to "
@@ -474,7 +474,6 @@ class Simulation(Box):  # pylint:disable=too-many-public-methods
         sources = values.get("sources")
 
         if (not structures) or (not sources):
-
             return val
 
         with log as consolidated_logger:
@@ -541,7 +540,6 @@ class Simulation(Box):  # pylint:disable=too-many-public-methods
                 fmin_mon = freqs.min()
                 fmax_mon = freqs.max()
                 for medium_index, medium in enumerate(mediums):
-
                     # skip mediums that have no freq range (all freqs valid)
                     if medium.frequency_range is None:
                         continue
@@ -723,7 +721,7 @@ class Simulation(Box):  # pylint:disable=too-many-public-methods
                     raise SetupError("Diffraction monitors must not lie in a lossy medium.")
         return val
 
-    @pydantic.validator("grid_spec", always=True)
+    # @pydantic.validator("grid_spec", always=True)
     def _warn_grid_size_too_small(cls, val, values):  # pylint:disable=too-many-locals
         """Warn user if any grid size is too large compared to minimum wavelength in material."""
 
@@ -740,7 +738,6 @@ class Simulation(Box):  # pylint:disable=too-many-public-methods
                 freq0 = source.source_time.freq0
 
                 for medium_index, medium in enumerate(mediums):
-
                     # min wavelength in PEC is meaningless and we'll get divide by inf errors
                     if isinstance(medium, PECMedium):
                         continue
@@ -1381,7 +1378,7 @@ class Simulation(Box):  # pylint:disable=too-many-public-methods
         medium_shapes = self._get_structures_plane(structures=self.structures, x=x, y=y, z=z)
         medium_map = self.medium_map
 
-        for (medium, shape) in medium_shapes:
+        for medium, shape in medium_shapes:
             mat_index = medium_map[medium]
             ax = self._plot_shape_structure(medium=medium, mat_index=mat_index, shape=shape, ax=ax)
 
@@ -1496,7 +1493,7 @@ class Simulation(Box):  # pylint:disable=too-many-public-methods
             medium_shapes = self._get_structures_plane(structures=structures, x=x, y=y, z=z)
 
         eps_min, eps_max = self.eps_bounds(freq=freq)
-        for (medium, shape) in medium_shapes:
+        for medium, shape in medium_shapes:
             # if the background medium is custom medium, it needs to be rendered separately
             if medium == self.medium and alpha < 1 and not isinstance(medium, AbstractCustomMedium):
                 continue
@@ -2198,7 +2195,6 @@ class Simulation(Box):  # pylint:disable=too-many-public-methods
 
         shapes = []
         for structure in structures:
-
             # get list of Shapely shapes that intersect at the plane
             shapes_plane = structure.geometry.intersections_2dbox(plane)
 
@@ -2208,12 +2204,10 @@ class Simulation(Box):  # pylint:disable=too-many-public-methods
 
         background_shapes = []
         for medium, shape, bounds in shapes:
-
             minx, miny, maxx, maxy = bounds
 
             # loop through background_shapes (note: all background are non-intersecting or merged)
             for index, (_medium, _shape, _bounds) in enumerate(background_shapes):
-
                 _minx, _miny, _maxx, _maxy = _bounds
 
                 # do a bounding box check to see if any intersection to do anything about
@@ -2459,7 +2453,7 @@ class Simulation(Box):  # pylint:disable=too-many-public-methods
         bmin_new, bmax_new = [], []
 
         zipped = zip(self.center, self.symmetry, bounds_min, bounds_max, sim_bs_min, sim_bs_max)
-        for (center, sym, bmin, bmax, sim_bmin, sim_bmax) in zipped:
+        for center, sym, bmin, bmax, sim_bmin, sim_bmax in zipped:
             if sym == 0 or center < bmin:
                 bmin_tmp, bmax_tmp = bmin, bmax
             elif bmax < center:
