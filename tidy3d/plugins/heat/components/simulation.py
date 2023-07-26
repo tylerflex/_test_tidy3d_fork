@@ -22,7 +22,7 @@ from .viz import HEAT_BC_COLOR_TEMPERATURE, HEAT_BC_COLOR_FLUX, HEAT_BC_COLOR_CO
 from .viz import plot_params_heat_bc, plot_params_heat_source
 
 from ....components.base import cached_property
-from ....components.types import Ax, Shapely
+from ....components.types import Ax, Shapely, TYPE_TAG_STR
 from ....components.viz import add_ax_if_none, equal_aspect, PlotParams
 from ....components.simulation import Simulation
 from ....components.structure import Structure
@@ -50,6 +50,7 @@ class HeatSimulation(Simulation):
         FluidMedium(optic_spec=Medium()),
         title="Background Medium",
         description="Background medium of simulation, defaults to vacuum if not specified.",
+        discriminator=TYPE_TAG_STR,
     )
 
     heat_structures: Tuple[HeatStructureType, ...] = pd.Field(

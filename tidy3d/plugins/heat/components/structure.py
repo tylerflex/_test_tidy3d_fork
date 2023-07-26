@@ -6,6 +6,7 @@ from typing import Union
 
 from ....components.base import cached_property
 from ....components.structure import Structure
+from ....components.types import TYPE_TAG_STR
 
 from .medium import HeatMediumType
 from .source import HeatSourceType
@@ -18,6 +19,7 @@ class HeatStructure(Structure):
         ...,
         title="Medium",
         description="Medium of the structure, which is heat solver compatible.",
+        discriminator=TYPE_TAG_STR,
     )
 
     source: HeatSourceType = pd.Field(

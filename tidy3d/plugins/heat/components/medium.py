@@ -5,7 +5,7 @@ from abc import ABC
 
 import pydantic as pd
 
-from ....components.types import Union
+from ....components.types import Union, TYPE_TAG_STR
 from ....components.base import Tidy3dBaseModel
 from ....components.medium import MediumType3D
 from ....components.validators import validate_name_str
@@ -23,6 +23,7 @@ class HeatMedium(ABC, Tidy3dBaseModel):
     optic_spec: MediumType3D = pd.Field(
         title="Optic Specification",
         description="Specification of medium's optic properties.",
+        discriminator=TYPE_TAG_STR,
     )
 
 
