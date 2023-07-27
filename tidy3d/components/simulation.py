@@ -29,7 +29,7 @@ from .source import SourceType, PlaneWave, GaussianBeam, AstigmaticGaussianBeam,
 from .source import CustomCurrentSource, CustomSourceTime
 from .source import TFSF, Source
 from .monitor import MonitorType, Monitor, FreqMonitor, SurfaceIntegrationMonitor
-from .monitor import AbstractFieldMonitor, DiffractionMonitor, AbstractFieldProjectionMonitor
+from .monitor import DiffractionMonitor, AbstractFieldProjectionMonitor
 from .data.dataset import Dataset
 from .viz import add_ax_if_none, equal_aspect
 
