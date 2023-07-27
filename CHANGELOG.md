@@ -14,11 +14,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Add width and height options to Simulation.plot_3d
 - `sim_with_source()`, `sim_with_monitor()`, and `sim_with_mode_solver_monitor()` methods allowing the mode solver to create simulations with the source/monitor/mode solver monitor previously added to the mode solver's simulation.
+- Upgrades `pydantic` reqiurement to `2.*` and imports `pydantic.v1` internally.
 
 ### Changed
 
 ### Fixed
-- Fix the `Environment has no attribute _current` issue when set `TIDY3D_ENV=prod`
+- Allow setting of `TIDY3D_ENV="prod"` without error and better handling of environment variable.
 
 ## [2.3.2] - 2023-7-21
 
