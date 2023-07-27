@@ -1,6 +1,6 @@
 """Tests mode objects."""
 import pytest
-import pydantic
+import pydantic.v1 as pydantic
 import tidy3d as td
 from tidy3d.exceptions import SetupError
 import matplotlib.pylab as plt

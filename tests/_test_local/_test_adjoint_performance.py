@@ -18,7 +18,7 @@ from tidy3d.components.grid.grid_spec import GridSpec
 from typing import Callable, Tuple
 
 import pytest
-import pydantic
+import pydantic.v1 as pydantic
 import jax.numpy as jnp
 import numpy as np
 from jax import grad, custom_vjp

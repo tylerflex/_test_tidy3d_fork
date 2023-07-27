@@ -4,7 +4,7 @@ from typing import Tuple
 
 import pytest
 import numpy as np
-import pydantic
+import pydantic.v1 as pydantic
 
 import numpy as np
 import xarray as xr

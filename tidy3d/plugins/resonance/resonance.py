@@ -8,7 +8,7 @@ import numpy as np
 import scipy.linalg
 import xarray as xr
 
-from pydantic import Field, NonNegativeFloat, PositiveInt, validator
+from pydantic.v1 import Field, NonNegativeFloat, PositiveInt, validator
 
 from ...log import log
 from ...components.base import Tidy3dBaseModel

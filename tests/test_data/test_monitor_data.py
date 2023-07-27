@@ -1,7 +1,7 @@
 """Tests tidy3d/components/data/monitor_data.py"""
 import numpy as np
 import pytest
-import pydantic
+import pydantic.v1 as pydantic
 import tidy3d as td
 
 from tidy3d.components.monitor import FieldMonitor, FieldTimeMonitor, PermittivityMonitor

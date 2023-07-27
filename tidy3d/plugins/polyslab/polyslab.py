@@ -3,7 +3,7 @@
 from typing import List, Tuple
 from math import isclose
 
-import pydantic
+import pydantic.v1 as pydantic
 from shapely.geometry import Polygon
 
 from ...log import log

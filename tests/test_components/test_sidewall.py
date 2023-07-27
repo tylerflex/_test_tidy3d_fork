@@ -2,7 +2,7 @@
 from typing import Dict
 import pytest
 import numpy as np
-import pydantic
+import pydantic.v1 as pydantic
 from shapely.geometry import Polygon, Point
 
 import tidy3d as td

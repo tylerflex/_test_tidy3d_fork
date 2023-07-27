@@ -5,7 +5,7 @@ from typing import Tuple, Optional
 
 import numpy as np
 from rich.progress import Progress
-from pydantic import Field, validator, PositiveInt, NonNegativeFloat, PositiveFloat
+from pydantic.v1 import Field, validator, PositiveInt, NonNegativeFloat, PositiveFloat
 import scipy
 
 from .fit import DispersionFitter

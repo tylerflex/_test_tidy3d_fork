@@ -7,8 +7,8 @@ from functools import wraps
 from typing import List, Callable, Dict, Union, Tuple, Any
 
 import rich
-import pydantic
-from pydantic.fields import ModelField
+import pydantic.v1 as pydantic
+from pydantic.v1.fields import ModelField
 import yaml
 import numpy as np
 import h5py

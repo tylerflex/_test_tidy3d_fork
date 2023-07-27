@@ -10,7 +10,7 @@ from typing import Callable, Mapping
 
 import boto3
 from boto3.s3.transfer import TransferConfig
-from pydantic import BaseModel, Field
+from pydantic.v1 import BaseModel, Field
 from rich.progress import TextColumn, Progress, BarColumn, DownloadColumn
 from rich.progress import TransferSpeedColumn, TimeRemainingColumn
 
