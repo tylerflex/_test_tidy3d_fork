@@ -32,6 +32,7 @@ from ....components.data.data_array import SpatialDataArray
 
 from ....exceptions import SetupError, ValidationError
 from ....constants import inf
+from ....log import log
 # from ....constants import KELVIN, DENSITY, SPECIFIC_HEAT_CAPACITY, THERMAL_CONDUCTIVITY, PERMITTIVITY
 # from ....constants import CONDUCTIVITY, HEAT_FLUX
 
@@ -83,10 +84,10 @@ class HeatSimulation(Simulation):
     def initialize_medium_and_structures(cls, values):
 
         if values.get("medium") != Medium():
-            print("Warning: HeatSimulation.medium is being overwritten by HeatSimulation.heat_medium")
+            log.warning("'HeatSimulation.medium' is being overwritten by a derivative of 'HeatSimulation.heat_medium'")
 
         if values.get("structures") != ():
-            print("Warning: HeatSimulation.structures is being overwritten by HeatSimulation.heat_structures")
+            log.warning("'HeatSimulation.structures' is being overwritten by a derivative of 'HeatSimulation.heat_structures'")
 
         heat_medium = values.get("heat_medium")
         medium = heat_medium.optic_spec
