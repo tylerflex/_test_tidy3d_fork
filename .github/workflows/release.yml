@@ -1,5 +1,8 @@
 name: "tidy3d-release"
 
+permissions:
+  contents: write
+
 on:
   push:
     tags:
